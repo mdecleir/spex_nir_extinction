@@ -4,6 +4,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 from astropy.modeling.powerlaws import PowerLaw1D
+from astropy.modeling.polynomial import Polynomial1D
 from astropy.modeling.models import Drude1D
 from astropy.modeling.fitting import LevMarLSQFitter
 
@@ -12,7 +13,8 @@ from dust_extinction.conversions import AxAvToExv
 
 
 def fit_function(
-    dat_type="elx",
+    dattype="elx",
+    functype="pow",
     ice=False,
     amp_bounds=(-1.5, 1.5),
     index_bounds=(0.0, 5.0),
@@ -23,8 +25,11 @@ def fit_function(
 
     Parameters
     ----------
-    dat_type : string [default="elx"]
-        Data type to fit (elx or alax)
+    dattype : string [default="elx"]
+        Data type to fit ("elx" or "alax")
+
+    functype : string [default="pow"]
+        Fitting function type ("pow" for powerlaw or "pol" for polynomial)
 
     ice : boolean [default=False]
         Whether or not to add the ice feature at 3.05 micron
@@ -43,11 +48,19 @@ def fit_function(
     func : Astropy CompoundModel
         The fitting function
     """
-    # define the basic powerlaw model
-    func = PowerLaw1D(
-        fixed={"x_0": True},
-        bounds={"amplitude": amp_bounds, "alpha": index_bounds},
-    )
+    # powerlaw model
+    if functype == "pow":
+        func = PowerLaw1D(
+            fixed={"x_0": True},
+            bounds={"amplitude": amp_bounds, "alpha": index_bounds},
+        )
+    elif functype == "pol":  # polynomial model
+        func = Polynomial1D(degree=6)
+    else:
+        warnings.warn(
+            'Unknown function type, choose "pow" for a powerlaw or "pol" for a polynomial',
+            stacklevel=2,
+        )
 
     # add a Drude profile for the ice feature if requested
     if ice:
@@ -60,7 +73,7 @@ def fit_function(
         )
 
     # convert the function from A(lambda)/A(V) to E(lambda-V)
-    if dat_type == "elx":
+    if dattype == "elx":
         func = func | AxAvToExv(bounds={"Av": AV_bounds})
 
     return func
@@ -69,6 +82,7 @@ def fit_function(
 def fit_spex_ext(
     starpair,
     path,
+    functype="pow",
     ice=False,
     amp_bounds=(-1.5, 1.5),
     index_bounds=(0.0, 5.0),
@@ -84,6 +98,9 @@ def fit_spex_ext(
 
     path : string
         Path to the data files
+
+    functype : string [default="pow"]
+        Fitting function type ("pow" for powerlaw or "pol" for polynomial)
 
     ice : boolean [default=False]
         Whether or not to fit the ice feature at 3.05 micron
@@ -106,8 +123,6 @@ def fit_spex_ext(
         - residuals: np.ndarray with the residuals, i.e. data-fit, at "waves" wavelengths
         - params: list with output Parameter objects
     """
-    np.set_printoptions(threshold=np.inf)
-
     # retrieve the SpeX data to be fitted, and sort the curve from short to long wavelengths
     extdata = ExtData("%s%s_ext.fits" % (path, starpair.lower()))
     (waves, exts, exts_unc) = extdata.get_fitdata(["SpeX_SXD", "SpeX_LXD"])
@@ -117,12 +132,12 @@ def fit_spex_ext(
     exts_unc = exts_unc[indx]
 
     # obtain the function to fit
-    func = fit_function(dat_type=extdata.type, ice=ice)
+    func = fit_function(dattype=extdata.type, functype=functype, ice=ice)
 
     # fit the data with the model
     fit = LevMarLSQFitter()
     fit_result = fit(func, waves, exts, weights=1 / exts_unc)
-
+    print(fit_result)
     # determine the wavelengths at which to evaluate and save the fitted model curve: all SpeX wavelengths, sorted from short to long (to avoid problems with overlap between SXD and LXD), and shortest and longest wavelength should have data
     full_waves = np.concatenate(
         (extdata.waves["SpeX_SXD"].value, extdata.waves["SpeX_LXD"].value)
@@ -141,15 +156,15 @@ def fit_spex_ext(
     full_res[full_npts > 0] = residuals
 
     # save the fitting results
-    extdata.model["type"] = "pow_" + extdata.type
+    extdata.model["type"] = functype + "_" + extdata.type
     extdata.model["waves"] = full_waves
     extdata.model["exts"] = fit_result(full_waves)
     extdata.model["residuals"] = full_res
     extdata.model["params"] = []
     for param in fit_result.param_names:
         extdata.model["params"].append(getattr(fit_result, param))
-    if "Av" in str(fit_result.param_names):
-        extdata.columns["AV"] = fit_result.Av_1.value
+        if "Av" in param:
+            extdata.columns["AV"] = getattr(fit_result, param)
     extdata.save("%s%s_ext.fits" % (path, starpair.lower()))
 
 
