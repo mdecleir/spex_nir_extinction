@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 
 from astropy.modeling.powerlaws import PowerLaw1D
 from astropy.modeling.polynomial import Polynomial1D
-from astropy.modeling.models import Drude1D
+from astropy.modeling.models import Drude1D, custom_model, Gaussian1D
 from astropy.modeling.fitting import LevMarLSQFitter
 
 from measure_extinction.extdata import ExtData
@@ -16,9 +16,6 @@ def fit_function(
     dattype="elx",
     functype="pow",
     ice=False,
-    amp_bounds=(-1.5, 1.5),
-    index_bounds=(0.0, 5.0),
-    AV_bounds=(0.0, 6.0),
 ):
     """
     Define the fitting function
@@ -34,14 +31,6 @@ def fit_function(
     ice : boolean [default=False]
         Whether or not to add the ice feature at 3.05 micron
 
-    amp_bounds : tuple [default=(-1.5,1.5)]
-        Powerlaw amplitude bounds to be used in the fitting
-
-    index_bounds : tuple [default=(0.0,5.0)]
-        Powerlaw index bounds to be used in the fitting
-
-    AV_bounds : tuple [default=(0.0,6.0)]
-        A(V) bounds to be used in the fitting
 
     Returns
     -------
@@ -52,7 +41,6 @@ def fit_function(
     if functype == "pow":
         func = PowerLaw1D(
             fixed={"x_0": True},
-            bounds={"amplitude": amp_bounds, "alpha": index_bounds},
         )
     elif functype == "pol":  # polynomial model
         func = Polynomial1D(degree=6)
@@ -64,17 +52,27 @@ def fit_function(
 
     # add a Drude profile for the ice feature if requested
     if ice:
-        func += Drude1D(
-            fwhm=0.7,
-            fixed={"fwhm": True},
-            bounds={
-                "x_0": (3.04, 3.06),
-            },
-        )
+        # func += Drude1D(
+        #     x_0=3.05,
+        #     fwhm=0.6,
+        #     bounds={"fwhm": (0.5, 1)},
+        # )
+
+        def drude_modified(x, scale=1, x_o=10, gamma_o=1, asym=1):
+            gamma = 2.0 * gamma_o / (1.0 + np.exp(asym * (x - x_o)))
+            y = (
+                scale
+                * ((gamma / x_o) ** 2)
+                / ((x / x_o - x_o / x) ** 2 + (gamma / x_o) ** 2)
+            )
+            return y
+
+        Drude_modified_model = custom_model(drude_modified)
+        func += Drude_modified_model(x_o=3.05, gamma_o=0.4)
 
     # convert the function from A(lambda)/A(V) to E(lambda-V)
     if dattype == "elx":
-        func = func | AxAvToExv(bounds={"Av": AV_bounds})
+        func = func | AxAvToExv()
 
     return func
 
@@ -84,9 +82,6 @@ def fit_spex_ext(
     path,
     functype="pow",
     ice=False,
-    amp_bounds=(-1.5, 1.5),
-    index_bounds=(0.0, 5.0),
-    AV_bounds=(0.0, 6.0),
 ):
     """
     Fit the observed SpeX NIR extinction curve
@@ -105,14 +100,6 @@ def fit_spex_ext(
     ice : boolean [default=False]
         Whether or not to fit the ice feature at 3.05 micron
 
-    amp_bounds : tuple [default=(-1.5,1.5)]
-        Powerlaw amplitude bounds to be used in the fitting
-
-    index_bounds : tuple [default=(0.0,5.0)]
-        Powerlaw index bounds to be used in the fitting
-
-    AV_bounds : tuple [default=(0.0,6.0)]
-        A(V) bounds to be used in the fitting
 
     Returns
     -------
@@ -136,8 +123,9 @@ def fit_spex_ext(
 
     # fit the data with the model
     fit = LevMarLSQFitter()
-    fit_result = fit(func, waves, exts, weights=1 / exts_unc)
+    fit_result = fit(func, waves, exts, weights=1 / exts_unc, maxiter=1000)
     print(fit_result)
+
     # determine the wavelengths at which to evaluate and save the fitted model curve: all SpeX wavelengths, sorted from short to long (to avoid problems with overlap between SXD and LXD), and shortest and longest wavelength should have data
     full_waves = np.concatenate(
         (extdata.waves["SpeX_SXD"].value, extdata.waves["SpeX_LXD"].value)
@@ -156,10 +144,13 @@ def fit_spex_ext(
     full_res[full_npts > 0] = residuals
 
     # save the fitting results
+    if ice:
+        functype += "_Drude"
     extdata.model["type"] = functype + "_" + extdata.type
     extdata.model["waves"] = full_waves
     extdata.model["exts"] = fit_result(full_waves)
     extdata.model["residuals"] = full_res
+    extdata.model["chi2"] = np.sum((residuals / exts_unc) ** 2)
     extdata.model["params"] = []
     for param in fit_result.param_names:
         extdata.model["params"].append(getattr(fit_result, param))
