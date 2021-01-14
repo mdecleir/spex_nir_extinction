@@ -58,7 +58,7 @@ def fit_function(
         #     bounds={"fwhm": (0.5, 1)},
         # )
 
-        def drude_modified(x, scale=1, x_o=10, gamma_o=1, asym=1):
+        def drude_modified(x, scale=1, x_o=1, gamma_o=1, asym=1):
             gamma = 2.0 * gamma_o / (1.0 + np.exp(asym * (x - x_o)))
             y = (
                 scale
@@ -68,7 +68,13 @@ def fit_function(
             return y
 
         Drude_modified_model = custom_model(drude_modified)
-        func += Drude_modified_model(x_o=3.05, gamma_o=0.4)
+        # func += Drude_modified_model(x_o=3.05)
+        func += Drude_modified_model(
+            x_o=2.9461043067594406,
+            gamma_o=0.4812388755514129,
+            asym=-35.74637360250102,
+            fixed={"x_o": True, "gamma_o": True, "asym": True},
+        )
 
     # convert the function from A(lambda)/A(V) to E(lambda-V)
     if dattype == "elx":
@@ -103,11 +109,12 @@ def fit_spex_ext(
 
     Returns
     -------
-    Updates extdata.model["type", "waves", "exts", "residuals", "params"] and extdata.columns["AV"] with the fitting results:
-        - type: string with the type of model ("pow_elx" or "pow_alav")
+    Updates extdata.model["type", "waves", "exts", "residuals", "chi2", "params"] and extdata.columns["AV"] with the fitting results:
+        - type: string with the type of model (e.g. "pow_elx_Drude")
         - waves: np.ndarray with the SpeX wavelengths
         - exts: np.ndarray with the fitted model to the extinction curve at "waves" wavelengths
         - residuals: np.ndarray with the residuals, i.e. data-fit, at "waves" wavelengths
+        - chi2 : float with the chi square of the fitting
         - params: list with output Parameter objects
     """
     # retrieve the SpeX data to be fitted, and sort the curve from short to long wavelengths
@@ -119,27 +126,33 @@ def fit_spex_ext(
     exts_unc = exts_unc[indx]
 
     # obtain the function to fit
+    if "SpeX_LXD" not in extdata.waves.keys():
+        ice = False
     func = fit_function(dattype=extdata.type, functype=functype, ice=ice)
 
     # fit the data with the model
     fit = LevMarLSQFitter()
     fit_result = fit(func, waves, exts, weights=1 / exts_unc, maxiter=1000)
     print(fit_result)
+    print(fit.fit_info["nfev"])
 
     # determine the wavelengths at which to evaluate and save the fitted model curve: all SpeX wavelengths, sorted from short to long (to avoid problems with overlap between SXD and LXD), and shortest and longest wavelength should have data
-    full_waves = np.concatenate(
-        (extdata.waves["SpeX_SXD"].value, extdata.waves["SpeX_LXD"].value)
-    )
+    if "SpeX_LXD" not in extdata.waves.keys():
+        full_waves = extdata.waves["SpeX_SXD"].value
+        full_npts = extdata.npts["SpeX_SXD"]
+    else:
+        full_waves = np.concatenate(
+            (extdata.waves["SpeX_SXD"].value, extdata.waves["SpeX_LXD"].value)
+        )
+        full_npts = np.concatenate((extdata.npts["SpeX_SXD"], extdata.npts["SpeX_LXD"]))
     indxs = np.argsort(full_waves)[
         np.logical_and(full_waves >= np.min(waves), full_waves <= np.max(waves))
     ]
     full_waves = full_waves[indxs]
+    full_npts = full_npts[indxs]
 
     # calculate the residuals and put them in an array of the same length as "full_waves" for plotting
     residuals = exts - fit_result(waves)
-    full_npts = np.concatenate((extdata.npts["SpeX_SXD"], extdata.npts["SpeX_LXD"]))[
-        indxs
-    ]
     full_res = np.full_like(full_npts, np.nan)
     full_res[full_npts > 0] = residuals
 
@@ -151,11 +164,14 @@ def fit_spex_ext(
     extdata.model["exts"] = fit_result(full_waves)
     extdata.model["residuals"] = full_res
     extdata.model["chi2"] = np.sum((residuals / exts_unc) ** 2)
+    print("Chi2", extdata.model["chi2"])
     extdata.model["params"] = []
     for param in fit_result.param_names:
         extdata.model["params"].append(getattr(fit_result, param))
         if "Av" in param:
-            extdata.columns["AV"] = getattr(fit_result, param)
+            extdata.columns["AV"] = getattr(fit_result, param).value
+            extdata.calc_RV()
+            print("RV", extdata.columns["RV"])
     extdata.save("%s%s_ext.fits" % (path, starpair.lower()))
 
 
