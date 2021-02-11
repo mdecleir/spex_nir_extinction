@@ -1,12 +1,13 @@
 # This script is intended to automate the calculation, fitting and plotting of the extinction curves of all stars in the sample.
 import numpy as np
 import matplotlib.pyplot as plt
+from matplotlib.ticker import MaxNLocator
 
 from measure_extinction.extdata import ExtData, AverageExtData
 from measure_extinction.utils.calc_ext import calc_extinction
 from measure_extinction.plotting.plot_ext import plot_multi_extinction, plot_extinction
 
-from fit_spex_ext import fit_spex_ext
+from fit_spex_ext import fit_spex_ext, fit_features
 
 
 # function to calculate, fit and plot all extinction curves
@@ -31,6 +32,154 @@ def calc_fit_plot(starpair_list):
             exclude=["IRS"],
             pdf=True,
         )
+
+
+def fit_plot_features(starpair):
+    """
+    Fit and plot the features separately with different profiles
+
+    Parameters
+    ----------
+    starpair : string
+        Name of the star pair for which to fit the extinction features, in the format "reddenedstarname_comparisonstarname" (no spaces)
+
+    Returns
+    -------
+    Plot with the continuum-subtracted extinction data and the fitted models
+    """
+    # fit the features
+    waves, exts, results = fit_features(starpair, path)
+
+    # plot the data
+    fig, ax = plt.subplots(
+        2, 1, figsize=(8, 6), sharex=True, gridspec_kw={"height_ratios": [6, 1]}
+    )
+    ax[0].plot(waves, exts, color="k", lw=0.5, alpha=0.7)
+
+    # plot the fitted models
+    # Gaussians (with the two individual profiles)
+    ax[0].plot(
+        waves,
+        results[0](waves),
+        lw=2,
+        label="2 Gaussians",
+    )
+
+    # ax[0].plot(waves, results[0][0](waves), color="#1f77b4", lw=1, ls="--")
+    # ax[0].plot(waves, results[0][1](waves), color="#1f77b4", lw=1, ls="--")
+
+    # Asymmetric Gaussians (with the two individual profiles)
+    ax[0].plot(
+        waves,
+        results[3](waves),
+        lw=2,
+        label="2 asym. Gaussians",
+    )
+    ax[0].plot(waves, results[3][0](waves), color="C1", lw=1, ls="--")
+    ax[0].plot(waves, results[3][1](waves), color="C1", lw=1, ls="--")
+
+    # Drudes
+    ax[0].plot(
+        waves,
+        results[1](waves),
+        ls="--",
+        lw=1,
+        label="2 Drudes",
+    )
+
+    # Asymmetric Drudes
+    ax[0].plot(
+        waves,
+        results[4](waves),
+        ls="--",
+        lw=1,
+        label="2 asym. Drudes",
+    )
+
+    # Lorentzians
+    ax[0].plot(
+        waves,
+        results[2](waves),
+        ls=":",
+        lw=1,
+        label="2 Lorentzians",
+    )
+
+    # Asymmetric Lorentzians
+    ax[0].plot(
+        waves,
+        results[5](waves),
+        ls=":",
+        lw=1,
+        label="2 asym. Lorentzians",
+    )
+
+    # finish the upper plot
+    ax[0].set_ylim(0.0, 0.176)
+    ax[0].set_ylabel("excess extinction")
+    ax[0].yaxis.set_major_locator(MaxNLocator(prune="lower"))
+    ax[0].legend(fontsize=fs * 0.8)
+
+    # plot the residuals (for the best fitting model)
+    ax[1].scatter(waves, results[3](waves) - exts, s=0.7, color="C1")
+    ax[1].axhline(ls="--", c="k", alpha=0.5)
+    ax[1].axhline(y=0.05, ls=":", c="k", alpha=0.5)
+    ax[1].axhline(y=-0.05, ls=":", c="k", alpha=0.5)
+    ax[1].set_ylabel("residual")
+    ax[1].set_ylim(-0.1, 0.1)
+
+    # finish and save the plot
+    plt.xlabel(r"$\lambda$ [$\mu m$]")
+    plt.subplots_adjust(hspace=0)
+    plt.savefig("Figures/features.pdf", bbox_inches="tight")
+
+
+# def plot_lab_ice():
+# file = "data/H2O_NASA.dat"
+# table = pd.read_table(file, comment="#", sep="\s+")
+# table = table[2531:]
+# waves = 1 / table["Freq."] * 1e4
+# norm = np.max(-table["%T,10K"] + 100)
+# absorbs = (-table["%T,10K"] + 100) / norm
+#
+# # plot the spectrum
+# # plt.plot(waves, absorbs, color="k", label=r"H$_2$O ice")
+#
+# file = "data/mixother_NASA.dat"
+# table = pd.read_table(file, comment="#", sep="\s+")
+#
+# table = table[2531:]
+# waves = 1 / table["Freq."] * 1e4
+# norm = np.max(-table["%T,10K"] + 95)
+# absorbs = (-table["%T,10K"] + 95) / norm
+#
+# # plot the spectrum
+# # plt.plot(waves, absorbs, color="k", label=r"mixed ice")
+#
+# file = "data/mix_Leiden.dat"
+# table = pd.read_table(file, comment="#", sep="\s+")
+# table = table[4330:]
+# waves = 1 / table["Freq."] * 1e4
+# norm = np.max(table["Trans."] + 0.02)
+# absorbs = (table["Trans."] + 0.02) / norm
+# # plt.plot(waves, absorbs)
+#
+# file = "data/ammon.dat"
+# table = pd.read_table(file, comment="#", sep="\s+")
+# table = table[4000:]
+# waves = 1 / table["Freq."] * 1e4
+# norm = np.max(table["Trans."] + 0.01)
+# absorbs = (table["Trans."] + 0.01) / norm
+# # plt.plot(waves, absorbs)
+#
+# file = "data/Godd_mix.dat"
+# table = pd.read_table(file, comment="#", sep="\s+")
+# table = table[500:]
+# waves = 1 / table["freq"] * 1e4
+# norm = np.max(table["absorbance"] + 0.01)
+# absorbs = (table["absorbance"] + 0.01) / norm
+#
+# # plt.plot(waves, absorbs)
 
 
 # function to plot all residuals in one figure
@@ -69,8 +218,17 @@ def plot_residuals(starpair_list):
             extdata.model["waves"], extdata.model["residuals"], s=0.3, alpha=0.3
         )
         ax1.axhline(ls="--", c="k", alpha=0.5)
-        ax1.axhline(y=-0.1, ls=":", alpha=0.5)
-        ax1.axhline(y=0.1, ls=":", alpha=0.5)
+        ax1.axhline(y=-0.02, ls=":", alpha=0.5)
+        ax1.axhline(y=0.02, ls=":", alpha=0.5)
+        # ax1.axvline(x=1.354, ls=":", alpha=0.5)
+        # ax1.axvline(x=1.411, ls=":", alpha=0.5)
+        # ax1.axvline(x=1.805, ls=":", alpha=0.5)
+        # ax1.axvline(x=1.947, ls=":", alpha=0.5)
+        # ax1.axvline(x=2.522, ls=":", alpha=0.5)
+        # ax1.axvline(x=2.875, ls=":", alpha=0.5)
+        # ax1.axvline(x=4.014, ls=":", alpha=0.5)
+        # ax1.axvline(x=4.594, ls=":", alpha=0.5)
+
         ax1.set_ylim([-0.2, 0.2])
         ax1.set_xlabel(r"$\lambda$ [$\mu m$]")
         ax1.set_ylabel("residuals")
@@ -81,6 +239,7 @@ def plot_residuals(starpair_list):
         ax2.axhline(y=offset, ls="--", c="k", alpha=0.5)
         ax2.axhline(y=offset - 0.1, ls=":", alpha=0.5)
         ax2.axhline(y=offset + 0.1, ls=":", alpha=0.5)
+
         ax2.text(5, offset, starpair.split("_")[0], color=colors(i % 10), fontsize=14)
         ax2.set_ylim([-0.2, offset + 0.2])
         ax2.set_xlabel(r"$\lambda$ [$\mu m$]")
@@ -96,39 +255,70 @@ if __name__ == "__main__":
     # define the path and the names of the star pairs in the format "reddenedstarname_comparisonstarname" (first the main sequence stars and then the giant stars, sorted by spectral type from B8 to O4)
     path = "/Users/mdecleir/Documents/NIR_ext/Data/"
     starpair_list = [
-        "HD017505_HD214680",  # done
-        "BD+56d524_HD051283",  # done
-        "HD013338_HD031726",  # done
-        "HD014250_HD032630",  # done # bad
-        "HD014422_HD214680",  # done # emission
-        "HD014956_HD188209",  # done
-        "HD029309_HD051283",  # done
-        "HD029647_HD078316",  # done
-        "HD034921_HD214680",  # done # emission
-        "HD037020_HD034816",  # done # bad
-        "HD037022_HD214680",  # done # bad
-        "HD037023_HD036512",  # done
-        "HD037061_HD034816",  # this # done
-        "HD038087_HD003360",  # this # done
-        "HD052721_HD036512",  # done # bad
-        "HD156247_HD032630",  # done # emission
-        "HD166734_HD036512",  # done
-        "HD183143_HD188209",  # done
-        "HD185418_HD034816",  # done
-        "HD192660_HD091316",  # done
-        "HD204827_HD204172",  # done
-        "HD206773_HD047839",  # done
-        "HD229238_HD091316",  # done
-        "HD283809_HD003360",  # done
-        "HD294264_HD031726",  # this # done
+        # "HD017505_HD214680",
+        # "BD+56d524_HD034816",
+        # "HD013338_HD031726",
+        # "HD014250_HD042560",
+        # "HD014422_HD214680",  # emission
+        # "HD014956_HD188209",
+        # "HD029309_HD042560",
+        # "HD029647_HD042560",
+        # "HD034921_HD214680",  # emission
+        # "HD037020_HD034816",  # bad
+        # "HD037022_HD034816",  # bad
+        # "HD037023_HD034816",
+        # "HD037061_HD034816",  # this
+        # "HD038087_HD034816",  # this
+        # "HD052721_HD091316",  # bad
+        # "HD156247_HD031726",
+        # "HD166734_HD188209",
+        # "HD183143_HD188209",
+        # "HD185418_HD034816",
+        # "HD192660_HD204172",
+        # "HD204827_HD204172",
+        # "HD206773_HD003360",
+        # "HD229238_HD214680",
+        "HD283809_HD003360",
+        # "HD294264_HD034759",  # this
     ]
+
+    # # read the list of stars for which to measure and plot the extinction curve
+    # table = pd.read_table("red-comp.list", comment="#")
+    # redstars = table["reddened"]
+    # compstars = table["comparison"]
+    # starpair_list = []
+    #
+    # # calculate and plot the extinction curve for every star
+    # for redstar, compstar in zip(redstars, compstars):
+    #     # create the starpair_list
+    #     starpair_list.append(redstar + "_" + compstar)
 
     # calculate, fit and plot all extinction curves
     calc_fit_plot(starpair_list)
 
+    # plot_multi_extinction(
+    #     starpair_list,
+    #     path,
+    #     range=[0.76, 5.5],
+    #     # alax=True,
+    #     # spread=True,
+    #     exclude=["IRS"],
+    #     pdf=True,
+    # )
+
     # create more plots
-    plt.rc("font", size=18)
-    plot_residuals(starpair_list)
+    fs = 18
+    plt.rc("font", size=fs)
+    plt.rc("axes", lw=1)
+    plt.rc("xtick", direction="in", labelsize=fs * 0.8)
+    plt.rc("ytick", direction="in", labelsize=fs * 0.8)
+    plt.rc("xtick.major", width=1, size=8)
+    plt.rc("ytick.major", width=1, size=8)
+
+    # plot_residuals(starpair_list)
+
+    # fit features for HD283809 separately
+    fit_plot_features("HD283809_HD003360")
 
     # parser.add_argument("--alax", help="plot A(lambda)/A(X)", action="store_true")
     # parser.add_argument(
