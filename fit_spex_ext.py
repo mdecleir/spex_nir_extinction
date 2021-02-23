@@ -60,17 +60,17 @@ def fit_function(
         #     bounds={"fwhm": (0.5, 1)},
         # )
 
-        def drude_modified(x, scale=1, x_o=1, gamma_o=1, asym=1):
-            gamma = 2.0 * gamma_o / (1.0 + np.exp(asym * (x - x_o)))
-            y = (
-                scale
-                * ((gamma / x_o) ** 2)
-                / ((x / x_o - x_o / x) ** 2 + (gamma / x_o) ** 2)
-            )
-            return y
-
-        Drude_modified_model = custom_model(drude_modified)
-        func += Drude_modified_model(x_o=3.05, gamma_o=0.3)
+        # def drude_modified(x, scale=1, x_o=1, gamma_o=1, asym=1):
+        #     gamma = 2.0 * gamma_o / (1.0 + np.exp(asym * (x - x_o)))
+        #     y = (
+        #         scale
+        #         * ((gamma / x_o) ** 2)
+        #         / ((x / x_o - x_o / x) ** 2 + (gamma / x_o) ** 2)
+        #     )
+        #     return y
+        #
+        # Drude_modified_model = custom_model(drude_modified)
+        # func += Drude_modified_model(x_o=3.05, gamma_o=0.3)
 
         # func += Drude_modified_model(
         #     x_o=3.0146054034063385,
@@ -78,6 +78,30 @@ def fit_function(
         #     asym=-3.3249381815320094,
         #     fixed={"x_o": True, "gamma_o": True, "asym": True},
         # )
+
+        # 2 asymmetric (modified) Gaussians
+        def gauss_asymmetric(x, scale=1, x_o=1, gamma_o=1, asym=1):
+            gamma = 2.0 * gamma_o / (1.0 + np.exp(asym * (x - x_o)))
+            # gamma is full width, so stddev=gamma/(2sqrt(2ln2))
+            y = scale * np.exp(
+                -((x - x_o) ** 2) / (2 * (gamma / (2 * np.sqrt(2 * np.log(2)))) ** 2)
+            )
+            return y
+
+        Gaussian_asym = custom_model(gauss_asymmetric)
+        # func += Gaussian_asym(x_o=3, gamma_o=0.3) + Gaussian_asym(x_o=3.4, gamma_o=0.4)
+
+        func += Gaussian_asym(
+            x_o=3.011498634873138,
+            gamma_o=-0.33575327133587224,
+            asym=-3.9652666570924633,
+            fixed={"x_o": True, "gamma_o": True, "asym": True},
+        ) + Gaussian_asym(
+            x_o=3.5278583234132412,
+            gamma_o=-1.3852846071334977,
+            asym=-11.262827694055785,
+            fixed={"x_o": True, "gamma_o": True, "asym": True},
+        )
 
     # convert the function from A(lambda)/A(V) to E(lambda-V)
     if dattype == "elx":
@@ -237,16 +261,29 @@ def fit_spex_ext(starpair, path, functype="pow", ice=False, exclude=None):
 
     # use the Levenberg-Marquardt algorithm to fit the data with the model
     fit = LevMarLSQFitter()
-    fit_result = fit(func, waves, exts, weights=1 / exts_unc, maxiter=10000)
-    # print(fit_result)
+    fit_result_lev = fit(func, waves, exts, weights=1 / exts_unc, maxiter=10000)
 
-    # Set up the backend to save the samples for the emcee runs
-    emcee_samples_file = "emcee_output.h5"
+    # set up the backend to save the samples for the emcee runs
+    emcee_samples_file = path + "Fitting_results/" + starpair + "_emcee_samples.h5"
 
     # do the fitting again, with MCMC, using the results from the first fitting as input
-    # fit2 = EmceeFitter(nsteps=1000, burnfrac=0.1, save_samples=emcee_samples_file)
-    # fit_result = fit2(fit_result_pre, waves, exts, weights=1 / exts_unc)
-    # print(fit_result)
+    fit2 = EmceeFitter(nsteps=10000, burnfrac=0.1, save_samples=emcee_samples_file)
+
+    # add parameter bounds
+    fit_result_lev.amplitude_0.bounds = (0, 2)
+    fit_result_lev.alpha_0.bounds = (0, 4)
+    fit_result_lev.Av_1.bounds = (0, 10)
+    fit_result_mcmc = fit2(fit_result_lev, waves, exts, weights=1 / exts_unc)
+    print(fit_result_mcmc)
+
+    # create standard MCMC plots
+    fit2.plot_emcee_results(
+        fit_result_mcmc, filebase=path + "Fitting_results/" + starpair
+    )
+
+    # choose the fit result to save
+    fit_result = fit_result_mcmc
+    # fit_result = fit_result_lev
 
     # determine the wavelengths at which to evaluate and save the fitted model curve: all SpeX wavelengths, sorted from short to long (to avoid problems with overlap between SXD and LXD), and shortest and longest wavelength should have data
     if "SpeX_LXD" not in extdata.waves.keys():
@@ -272,7 +309,7 @@ def fit_spex_ext(starpair, path, functype="pow", ice=False, exclude=None):
     else:
         full_res[(full_npts > 0)] = residuals
 
-    # save the fitting results
+    # save the fitting results to the fits file
     if ice:
         functype += "_Drude"
     extdata.model["type"] = functype + "_" + extdata.type
