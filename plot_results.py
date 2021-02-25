@@ -6,8 +6,8 @@ from scipy import stats
 from measure_extinction.extdata import ExtData
 
 
-def plot_params(ax, x, y):
-    ax.scatter(x, y, color="k")
+def plot_params(ax, x, y, x_err=None, y_err=None):
+    ax.errorbar(x, y, xerr=x_err, yerr=y_err, fmt=".k")
     rho, p = stats.spearmanr(x, y)
     ax.text(
         0.95,
@@ -20,40 +20,47 @@ def plot_params(ax, x, y):
 
 
 def plot_param_triangle(starpair_list):
-    amplitudes = []
-    alphas = []
-    AVs = []
-    RVs = []
+    amplitudes, amp_l, amp_u, alphas, alpha_l, alpha_u, AVs, AV_l, AV_u, RVs = (
+        [] for i in range(10)
+    )
 
     # retrieve the fitting results
     for starpair in starpair_list:
         extdata = ExtData("%s%s_ext.fits" % (path, starpair.lower()))
         amplitudes.append(extdata.model["params"][0].value)
+        amp_l.append(extdata.model["params"][0].unc_minus)
+        amp_u.append(extdata.model["params"][0].unc_plus)
         alphas.append(extdata.model["params"][2].value)
-        AVs.append(extdata.columns["AV"][0])
+        alpha_l.append(extdata.model["params"][2].unc_minus)
+        alpha_u.append(extdata.model["params"][2].unc_plus)
+        AVs.append(extdata.model["params"][3].value)
+        AV_l.append(extdata.model["params"][3].unc_minus)
+        AV_u.append(extdata.model["params"][3].unc_plus)
+
         RVs.append(extdata.columns["RV"][0])
+        # TODO: add RV uncertainties!!
 
     # create the plot
     fig, ax = plt.subplots(3, 3, figsize=(10, 10), sharex="col", sharey="row")
     fs = 16
 
     # plot alpha vs. amplitude
-    plot_params(ax[0, 0], amplitudes, alphas)
+    plot_params(ax[0, 0], amplitudes, alphas, (amp_l, amp_u), (alpha_l, alpha_u))
 
     # plot A(V) vs. amplitude
-    plot_params(ax[1, 0], amplitudes, AVs)
+    plot_params(ax[1, 0], amplitudes, AVs, (amp_l, amp_u), (AV_l, AV_u))
 
     # plot R(V) vs. amplitude
-    plot_params(ax[2, 0], amplitudes, RVs)
+    plot_params(ax[2, 0], amplitudes, RVs, (amp_l, amp_u))
 
     # plot A(V) vs. alpha
-    plot_params(ax[1, 1], alphas, AVs)
+    plot_params(ax[1, 1], alphas, AVs, (alpha_l, alpha_u), (AV_l, AV_u))
 
     # plot R(V) vs. alpha
-    plot_params(ax[2, 1], alphas, RVs)
+    plot_params(ax[2, 1], alphas, RVs, (alpha_l, alpha_u))
 
     # plot R(V) vs. A(V)
-    plot_params(ax[2, 2], AVs, RVs)
+    plot_params(ax[2, 2], AVs, RVs, (AV_l, AV_u))
 
     # finalize the plot
     ax[0, 0].set_ylabel(r"$\alpha$", fontsize=fs)
