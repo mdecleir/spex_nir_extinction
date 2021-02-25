@@ -21,7 +21,7 @@ def calc_fit_plot(starpair_list):
         calc_extinction(redstar, compstar, path)
 
         # fit the extinction curve
-        fit_spex_ext(starpair, path, ice=True)
+        fit_spex_ext(starpair, path, ice=False)
 
         # plot the extinction curve
         plot_extinction(
@@ -73,7 +73,7 @@ def fit_plot_features(starpair):
         waves,
         results[3](waves),
         lw=2,
-        label="2 asym. Gaussians",
+        label="2 mod. Gaussians",
     )
     ax[0].plot(waves, results[3][0](waves), color="C1", lw=1, ls="--")
     ax[0].plot(waves, results[3][1](waves), color="C1", lw=1, ls="--")
@@ -93,7 +93,7 @@ def fit_plot_features(starpair):
         results[4](waves),
         ls="--",
         lw=1,
-        label="2 asym. Drudes",
+        label="2 mod. Drudes",
     )
 
     # Lorentzians
@@ -111,7 +111,7 @@ def fit_plot_features(starpair):
         results[5](waves),
         ls=":",
         lw=1,
-        label="2 asym. Lorentzians",
+        label="2 mod. Lorentzians",
     )
 
     # finish the upper plot
@@ -255,31 +255,31 @@ if __name__ == "__main__":
     # define the path and the names of the star pairs in the format "reddenedstarname_comparisonstarname" (first the main sequence stars and then the giant stars, sorted by spectral type from B8 to O4)
     path = "/Users/mdecleir/Documents/NIR_ext/Data/"
     starpair_list = [
-        # "HD017505_HD214680",
-        # "BD+56d524_HD034816",
-        # "HD013338_HD031726",
-        # "HD014250_HD042560",
-        # "HD014422_HD214680",  # emission
-        # "HD014956_HD188209",
-        # "HD029309_HD042560",
-        # "HD029647_HD042560",
-        # "HD034921_HD214680",  # emission
-        # "HD037020_HD034816",  # bad
-        # "HD037022_HD034816",  # bad
-        # "HD037023_HD034816",
-        # "HD037061_HD034816",  # this
-        # "HD038087_HD034816",  # this
-        # "HD052721_HD091316",  # bad
-        # "HD156247_HD031726",
-        # "HD166734_HD188209",
-        # "HD183143_HD188209",
-        # "HD185418_HD034816",
-        # "HD192660_HD204172",
-        # "HD204827_HD204172",
-        # "HD206773_HD003360",
-        # "HD229238_HD214680",
+        "HD017505_HD214680",
+        "BD+56d524_HD034816",
+        "HD013338_HD031726",
+        "HD014250_HD042560",
+        "HD014422_HD214680",
+        "HD014956_HD188209",
+        "HD029309_HD042560",
+        "HD029647_HD042560",
+        "HD034921_HD214680",
+        "HD037020_HD034816",
+        "HD037022_HD034816",
+        "HD037023_HD034816",
+        "HD037061_HD034816",
+        "HD038087_HD034816",
+        "HD052721_HD091316",
+        "HD156247_HD031726",
+        "HD166734_HD188209",
+        "HD183143_HD188209",
+        "HD185418_HD034816",
+        "HD192660_HD204172",
+        "HD204827_HD204172",
+        "HD206773_HD003360",
+        "HD229238_HD214680",
         "HD283809_HD003360",
-        # "HD294264_HD034759",  # this
+        "HD294264_HD034759",
     ]
 
     # # read the list of stars for which to measure and plot the extinction curve
@@ -315,10 +315,11 @@ if __name__ == "__main__":
     plt.rc("xtick.major", width=1, size=8)
     plt.rc("ytick.major", width=1, size=8)
 
+    # plot all residuals in one figure
     # plot_residuals(starpair_list)
 
     # fit features for HD283809 separately
-    fit_plot_features("HD283809_HD003360")
+    # fit_plot_features("HD283809_HD003360")
 
     # parser.add_argument("--alax", help="plot A(lambda)/A(X)", action="store_true")
     # parser.add_argument(
