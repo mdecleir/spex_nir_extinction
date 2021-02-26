@@ -1,13 +1,14 @@
 # This script plots the results of the fitting
 
+import numpy as np
 from matplotlib import pyplot as plt
 from scipy import stats
 
 from measure_extinction.extdata import ExtData
 
 
-def plot_params(ax, x, y, x_err=None, y_err=None):
-    ax.errorbar(x, y, xerr=x_err, yerr=y_err, fmt=".k")
+def plot_params(ax, x, y, x_err=None, y_err=None, flagged=None):
+    ax.errorbar(x, y, xerr=x_err, yerr=y_err, fmt=".k", zorder=0)
     rho, p = stats.spearmanr(x, y)
     ax.text(
         0.95,
@@ -17,27 +18,42 @@ def plot_params(ax, x, y, x_err=None, y_err=None):
         horizontalalignment="right",
         transform=ax.transAxes,
     )
+    # indicate the flagged curves in red
+    if flagged is not None:
+        ax.scatter(x[flagged], y[flagged], color="r", s=10)
+        rho2, p2 = stats.spearmanr(x[~flagged], y[~flagged])
+        ax.text(
+            0.95,
+            0.8,
+            r"$\rho =$" + "{:1.2f}".format(rho2),
+            color="green",
+            fontsize=12,
+            horizontalalignment="right",
+            transform=ax.transAxes,
+        )
 
 
-def plot_param_triangle(starpair_list):
+def plot_param_triangle(starpair_list, flagged):
     amplitudes, amp_l, amp_u, alphas, alpha_l, alpha_u, AVs, AV_l, AV_u, RVs = (
-        [] for i in range(10)
+        np.zeros(len(starpair_list)) for i in range(10)
     )
+    flags = np.zeros(len(starpair_list), dtype=bool)
 
     # retrieve the fitting results
-    for starpair in starpair_list:
+    for i, starpair in enumerate(starpair_list):
         extdata = ExtData("%s%s_ext.fits" % (path, starpair.lower()))
-        amplitudes.append(extdata.model["params"][0].value)
-        amp_l.append(extdata.model["params"][0].unc_minus)
-        amp_u.append(extdata.model["params"][0].unc_plus)
-        alphas.append(extdata.model["params"][2].value)
-        alpha_l.append(extdata.model["params"][2].unc_minus)
-        alpha_u.append(extdata.model["params"][2].unc_plus)
-        AVs.append(extdata.model["params"][3].value)
-        AV_l.append(extdata.model["params"][3].unc_minus)
-        AV_u.append(extdata.model["params"][3].unc_plus)
-
-        RVs.append(extdata.columns["RV"][0])
+        amplitudes[i] = extdata.model["params"][0].value
+        amp_l[i] = extdata.model["params"][0].unc_minus
+        amp_u[i] = extdata.model["params"][0].unc_plus
+        alphas[i] = extdata.model["params"][2].value
+        alpha_l[i] = extdata.model["params"][2].unc_minus
+        alpha_u[i] = extdata.model["params"][2].unc_plus
+        AVs[i] = extdata.model["params"][3].value
+        AV_l[i] = extdata.model["params"][3].unc_minus
+        AV_u[i] = extdata.model["params"][3].unc_plus
+        RVs[i] = extdata.columns["RV"][0]
+        if starpair in flagged:
+            flags[i] = True
         # TODO: add RV uncertainties!!
 
     # create the plot
@@ -45,22 +61,22 @@ def plot_param_triangle(starpair_list):
     fs = 16
 
     # plot alpha vs. amplitude
-    plot_params(ax[0, 0], amplitudes, alphas, (amp_l, amp_u), (alpha_l, alpha_u))
+    plot_params(ax[0, 0], amplitudes, alphas, (amp_l, amp_u), (alpha_l, alpha_u), flags)
 
     # plot A(V) vs. amplitude
-    plot_params(ax[1, 0], amplitudes, AVs, (amp_l, amp_u), (AV_l, AV_u))
+    plot_params(ax[1, 0], amplitudes, AVs, (amp_l, amp_u), (AV_l, AV_u), flags)
 
     # plot R(V) vs. amplitude
-    plot_params(ax[2, 0], amplitudes, RVs, (amp_l, amp_u))
+    plot_params(ax[2, 0], amplitudes, RVs, (amp_l, amp_u), flagged=flags)
 
     # plot A(V) vs. alpha
-    plot_params(ax[1, 1], alphas, AVs, (alpha_l, alpha_u), (AV_l, AV_u))
+    plot_params(ax[1, 1], alphas, AVs, (alpha_l, alpha_u), (AV_l, AV_u), flags)
 
     # plot R(V) vs. alpha
-    plot_params(ax[2, 1], alphas, RVs, (alpha_l, alpha_u))
+    plot_params(ax[2, 1], alphas, RVs, (alpha_l, alpha_u), flagged=flags)
 
     # plot R(V) vs. A(V)
-    plot_params(ax[2, 2], AVs, RVs, (AV_l, AV_u))
+    plot_params(ax[2, 2], AVs, RVs, (AV_l, AV_u), flagged=flags)
 
     # finalize the plot
     ax[0, 0].set_ylabel(r"$\alpha$", fontsize=fs)
@@ -107,5 +123,14 @@ if __name__ == "__main__":
         "HD294264_HD034759",
     ]
 
+    flagged = [
+        "HD037023_HD034816",
+        "HD034921_HD214680",
+        "HD037020_HD034816",
+        "HD037022_HD034816",
+        "HD052721_HD091316",
+        "HD206773_HD003360",
+    ]
+
     # create plot
-    plot_param_triangle(starpair_list)
+    plot_param_triangle(starpair_list, flagged)
