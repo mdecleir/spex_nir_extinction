@@ -40,20 +40,3 @@ if __name__ == "__main__":
     spex_path = "/Users/mdecleir/Documents/NIR_ext/Data/SpeX_Data/"
     for star in stars:
         merge_scale_plot(star)
-
-    # if args.onefig:  # plot all spectra in the same figure
-    #     plot_multi_spectra(
-    #         stars,
-    #         os.path.dirname(os.path.normpath(args.spex_path)) + "/",
-    #         args.mlam4,
-    #         args.HI_lines,
-    #         args.range,
-    #         args.norm_range,
-    #         args.spread,
-    #         args.exclude,
-    #         pdf=True,
-    #     )
-    # else:  # plot all spectra separately
-    #     if args.spread:
-    #         parser.error(
-    #             "The flag --spread can only be used in combination with the flag --onefig. It only makes sense to spread out the spectra if there is more than one spectrum in the same plot."    #
