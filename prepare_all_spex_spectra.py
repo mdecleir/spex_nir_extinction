@@ -8,7 +8,7 @@ import os
 
 from measure_extinction.utils.merge_spex_spec import merge_spex
 from measure_extinction.utils.scale_spex_spec import calc_save_corfac_spex
-from measure_extinction.plotting.plot_spec import plot_multi_spectra, plot_spectrum
+from measure_extinction.plotting.plot_spec import plot_spectrum
 
 
 def merge_scale_plot(star):
