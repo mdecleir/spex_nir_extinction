@@ -1,11 +1,11 @@
 #!/usr/bin/env python
+# This script creates plots with all SpeX spectra for the NIR extinction paper (Decleir et al. 2021).
 
 from measure_extinction.plotting.plot_spec import plot_multi_spectra
 
 
-def plot_comp_spectra():
-    # define the path and the names of the comparison stars (first the main sequence stars and then the giant stars, sorted by spectral type from B8 to O4)
-    path = "/Users/mdecleir/Documents/NIR_ext/Data/"
+def plot_comp_spectra(path):
+    # define the names of the comparison stars (first the main sequence stars and then the giant stars, sorted by spectral type from B8 to O4)
     stars = [
         "HD034759",
         "HD032630",
@@ -38,9 +38,8 @@ def plot_comp_spectra():
     )
 
 
-def plot_red_spectra():
-    # define the path and the names of the reddened stars (first the main sequence stars and then the giant stars, sorted by A(V) from low to high)
-    path = "/Users/mdecleir/Documents/NIR_ext/Data/"
+def plot_red_spectra(path):
+    # define the names of the reddened stars (first the main sequence stars and then the giant stars, sorted by A(V) from low to high)
     stars = [
         "HD014250",
         "HD156247",
@@ -84,5 +83,6 @@ def plot_red_spectra():
 
 
 if __name__ == "__main__":
-    plot_comp_spectra()
-    plot_red_spectra()
+    path = "/Users/mdecleir/Documents/NIR_ext/Data/"
+    plot_comp_spectra(path)
+    plot_red_spectra(path)
