@@ -10,8 +10,8 @@ def plot_comp_spectra(path):
         "HD034759",
         "HD032630",
         "HD042560",
-        "HD031726",
         "HD003360",
+        "HD031726",
         "HD034816",
         "HD036512",
         "HD214680",
@@ -24,18 +24,62 @@ def plot_comp_spectra(path):
         "HD188209",
     ]
 
+    # specify the offsets and angles for the star names
+    offsets = [
+        0.2,
+        0.15,
+        0.11,
+        0.1,
+        0.12,
+        0.06,
+        0.1,
+        0.08,
+        0.08,
+        0.28,
+        0.23,
+        0.15,
+        0.11,
+        0.12,
+        0.25,
+    ]
+    angles = [12, 10, 8, 8, 7, 7, 5, 10, 10, 18, 15, 12, 12, 14, 16]
+
     # plot the spectra
-    plot_multi_spectra(
+    fig, ax = plot_multi_spectra(
         stars,
         path,
         mlam4=True,
-        range=[0.75, 5.5],
-        norm_range=[1, 1.1],
+        range=[0.75, 5.6],
+        norm_range=[1, 1.05],
         spread=True,
         exclude=["IRS"],
+        text_offsets=offsets,
+        text_angles=angles,
         pdf=True,
         outname="comp_stars.pdf",
     )
+
+    # annotate the main sequence and giant star spectra with text
+    ax.annotate(
+        "main sequence",
+        xy=(5.37, 3.7),
+        xytext=(5.5, 3.7),
+        ha="center",
+        va="center",
+        rotation=-90,
+        arrowprops=dict(arrowstyle="-[, widthB=17, lengthB=1.8", lw=3),
+    )
+    ax.annotate(
+        "giants and supergiants",
+        xy=(5.37, 8.6),
+        xytext=(5.5, 8.6),
+        ha="center",
+        va="center",
+        rotation=-90,
+        arrowprops=dict(arrowstyle="-[, widthB=9, lengthB=1.8", lw=3),
+    )
+
+    fig.savefig("../Figures/paper/comp_stars.pdf", bbox_inches="tight")
 
 
 def plot_red_spectra(path):
