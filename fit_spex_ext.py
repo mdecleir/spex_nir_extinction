@@ -41,9 +41,7 @@ def fit_function(
     """
     # powerlaw model
     if functype == "pow":
-        func = PowerLaw1D(
-            fixed={"x_0": True},
-        )
+        func = PowerLaw1D(fixed={"x_0": True})
     elif functype == "pol":  # polynomial model
         func = Polynomial1D(degree=6)
     else:
@@ -322,7 +320,11 @@ def fit_spex_ext(starpair, path, functype="pow", ice=False, exclude=None):
     for param in fit_result.param_names:
         extdata.model["params"].append(getattr(fit_result, param))
         if "Av" in param:
-            extdata.columns["AV"] = getattr(fit_result, param).value
+            extdata.columns["AV"] = (
+                getattr(fit_result, param).value,
+                getattr(fit_result, param).unc_minus,
+                getattr(fit_result, param).unc_plus,
+            )
             extdata.calc_RV()
             print(extdata.columns)
     extdata.save("%s%s_ext.fits" % (path, starpair.lower()))
