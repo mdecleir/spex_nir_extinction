@@ -103,7 +103,7 @@ def plot_extinction_curves(path):
         pdf=True,
     )
     ax.set_ylim(-0.1, 5.1)
-    fig.savefig("Figures/ext_curves_alav.pdf", bbox_inches="tight")
+    fig.savefig("../Figures/ext_curves_alav.pdf", bbox_inches="tight")
 
 
 def plot_average_curve(path):
