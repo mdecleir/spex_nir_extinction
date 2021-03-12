@@ -1,6 +1,5 @@
 #!/usr/bin/env python
-
-from __future__ import absolute_import, division, print_function, unicode_literals
+# This script creates plots with SpeX extinction curves for the NIR extinction paper (Decleir et al. 2021).
 
 from measure_extinction.plotting.plot_ext import (
     plot_multi_extinction,
@@ -9,60 +8,150 @@ from measure_extinction.plotting.plot_ext import (
 from measure_extinction.extdata import ExtData, AverageExtData
 
 
-def plot_extinction_curves():
-    # define the path and the names of the star pairs in the format "reddenedstarname_comparisonstarname" (first the main sequence stars and then the giant stars, sorted by spectral type from B8 to O4)
-    path = "/Users/mdecleir/Documents/NIR_ext/Data/"
-    starpair_list = [
-        "HD017505_HD214680",
-        "BD+56d524_HD051283",
+def plot_extinction_curves(path):
+    # define the names of the star pairs in the format "reddenedstarname_comparisonstarname"
+    starpairs = [
+        "BD+56d524_HD034816",
         "HD013338_HD031726",
-        "HD014250_HD032630",
-        "HD014422_HD214680",
+        "HD014250_HD042560",
+        # "HD014422_HD214680",
         "HD014956_HD188209",
-        "HD029309_HD051283",
-        "HD029647_HD078316",
-        "HD034921_HD214680",
-        "HD037020_HD034816",
-        "HD037022_HD214680",
-        "HD037023_HD036512",
+        "HD017505_HD214680",
+        "HD029309_HD042560",
+        "HD029647_HD042560",
+        # "HD034921_HD214680",
+        # "HD037020_HD034816",
+        # "HD037022_HD034816",
+        # "HD037023_HD034816",
         "HD037061_HD034816",
-        "HD038087_HD003360",
-        "HD052721_HD036512",
-        "HD156247_HD032630",
-        "HD166734_HD036512",
+        "HD038087_HD034816",
+        # "HD052721_HD091316",
+        "HD156247_HD031726",
+        "HD166734_HD188209",
         "HD183143_HD188209",
         "HD185418_HD034816",
-        "HD192660_HD091316",
+        "HD192660_HD204172",
         "HD204827_HD204172",
-        "HD206773_HD047839",
-        "HD229238_HD091316",
+        # "HD206773_HD003360",
+        "HD229238_HD214680",
         "HD283809_HD003360",
-        "HD294264_HD031726",
+        "HD294264_HD034759",
     ]
 
-    # plot the extinction curves
+    # plot the extinction curves in E(lambda-V)
     plot_multi_extinction(
-        starpair_list,
+        starpairs,
         path,
         range=[0.76, 5.5],
-        alax=True,
-        spread=True,
+        # spread=True,
         exclude=["IRS"],
         pdf=True,
     )
 
-    # plot the average extinction curve in a separate plot
+    # specify the offsets and angles for the star names
+    offsets = [
+        0,
+        0.03,
+        0.03,
+        0.01,
+        0.04,
+        0.01,
+        0.01,
+        0.01,
+        0.02,
+        0,
+        0.03,
+        0.02,
+        -0.05,
+        0.04,
+        0.03,
+        0.05,
+        0.02,
+        0.02,
+    ]
+    angles = [
+        -38,
+        -44,
+        -10,
+        -32,
+        -30,
+        -46,
+        -44,
+        -42,
+        -36,
+        -46,
+        -40,
+        -44,
+        -42,
+        -42,
+        -44,
+        -46,
+        -46,
+        -38,
+    ]
+
+    # plot the extinction curves in A(lambda)/A(V)
+    fig, ax = plot_multi_extinction(
+        starpairs,
+        path,
+        alax=True,
+        range=[0.76, 5.45],
+        spread=True,
+        exclude=["IRS"],
+        text_offsets=offsets,
+        text_angles=angles,
+        pdf=True,
+    )
+    ax.set_ylim(-0.1, 5.1)
+    fig.savefig("Figures/ext_curves_alav.pdf", bbox_inches="tight")
+
+
+def plot_average_curve(path):
+    """
+    Plot the average extinction curve
+
+    Parameters
+    ----------
+    path : string
+        Path to the data files
+    """
+    starpair_list = [
+        "BD+56d524_HD034816",
+        "HD013338_HD031726",
+        "HD014250_HD042560",
+        # "HD014422_HD214680",
+        "HD014956_HD188209",
+        "HD017505_HD214680",
+        "HD029309_HD042560",
+        "HD029647_HD042560",
+        # "HD034921_HD214680",
+        # "HD037020_HD034816",
+        # "HD037022_HD034816",
+        # "HD037023_HD034816",
+        "HD037061_HD034816",
+        "HD038087_HD034816",
+        # "HD052721_HD091316",
+        "HD156247_HD031726",
+        "HD166734_HD188209",
+        "HD183143_HD188209",
+        "HD185418_HD034816",
+        "HD192660_HD204172",
+        "HD204827_HD204172",
+        # "HD206773_HD003360",
+        "HD229238_HD214680",
+        "HD283809_HD003360",
+        "HD294264_HD034759",
+    ]
     plot_average(
         starpair_list,
         path,
-        alax=False,
-        powerlaw=True,
-        extmodels=True,
-        range=[0.78, 5.1],
-        exclude=["IRS", "BAND"],
+        range=[0.78, 6.1],
+        exclude=["IRS"],
         pdf=True,
     )
 
 
 if __name__ == "__main__":
-    plot_extinction_curves()
+    path = "/Users/mdecleir/Documents/NIR_ext/Data/"
+    plot_extinction_curves(path)
+    # plot_average_curve(path)
