@@ -83,7 +83,7 @@ def plot_comp_spectra(path):
 
 
 def plot_red_spectra(path):
-    # define the names of the reddened stars (first the main sequence stars and then the giant stars, sorted by A(V) from low to high)
+    # define the names of the reddened stars (sorted by A(V) from low to high)
     stars = [
         "HD156247",
         "HD185418",
@@ -133,7 +133,7 @@ def plot_red_spectra(path):
         stars,
         path,
         mlam4=True,
-        range=[0.75, 5.55],
+        range=[0.75, 5.5],
         norm_range=[0.95, 1.05],
         spread=True,
         exclude=["IRS", "STIS_Opt"],
@@ -148,18 +148,46 @@ def plot_red_spectra(path):
 
 
 def plot_unused_spectra(path):
+    # define the names of the reddened stars that cannot be used to measure an extinction curve (sorted by steepness)
     stars = [
-        "HD014422",
+        "HD037022",
         "HD052721",
+        "HD037023",
         "HD206773",
         "HD034921",
-        "HD037023",
         "HD037020",
-        "HD037022",
+        "HD014422",
     ]
+    # specify the offsets and angles for the star names
+    offsets = [
+        0.15,
+        0.05,
+        0.21,
+        0.12,
+        -0.1,
+        0.16,
+        0.18,
+    ]
+    angles = [14, 17, 17, 18, 22, 26, 32]
+    fig, ax = plot_multi_spectra(
+        stars,
+        path,
+        mlam4=True,
+        range=[0.75, 5.4],
+        norm_range=[0.95, 1.05],
+        spread=True,
+        exclude=["IRS", "STIS_Opt"],
+        text_offsets=offsets,
+        text_angles=angles,
+        pdf=True,
+        outname="bad_stars.pdf",
+    )
+    ax.set_ylim(0.6, 11)
+    fig.savefig("../Figures/bad_stars.pdf", bbox_inches="tight")
 
 
 if __name__ == "__main__":
     path = "/Users/mdecleir/Documents/NIR_ext/Data/"
     plot_comp_spectra(path)
     plot_red_spectra(path)
+    plot_unused_spectra(path)
