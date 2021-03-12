@@ -50,7 +50,7 @@ def plot_comp_spectra(path):
         path,
         mlam4=True,
         range=[0.75, 5.6],
-        norm_range=[1, 1.05],
+        norm_range=[0.95, 1.05],
         spread=True,
         exclude=["IRS"],
         text_offsets=offsets,
@@ -79,51 +79,84 @@ def plot_comp_spectra(path):
         arrowprops=dict(arrowstyle="-[, widthB=9, lengthB=1.8", lw=3),
     )
 
-    fig.savefig("../Figures/paper/comp_stars.pdf", bbox_inches="tight")
+    fig.savefig("../Figures/comp_stars.pdf", bbox_inches="tight")
 
 
 def plot_red_spectra(path):
     # define the names of the reddened stars (first the main sequence stars and then the giant stars, sorted by A(V) from low to high)
     stars = [
-        "HD014250",
         "HD156247",
-        "BD+56d524",
         "HD185418",
         "HD013338",
+        "HD014250",
         "HD017505",
-        "HD204827",
+        "BD+56d524",
         "HD192660",
-        "HD038087",
+        "HD204827",
         "HD029309",
-        "HD037022",
-        "HD037023",
         "HD014956",
-        "HD052721",
+        "HD038087",
         "HD037061",
-        "HD229238",
-        "HD206773",
-        "HD034921",
-        "HD029647",
-        "HD037020",
         "HD294264",
+        "HD229238",
         "HD166734",
-        "HD014422",
+        "HD029647",
         "HD183143",
         "HD283809",
     ]
 
+    # specify the offsets and angles for the star names
+    offsets = [
+        0.11,
+        0.22,
+        0.21,
+        0.2,
+        0.17,
+        0.22,
+        0.2,
+        0.22,
+        0.16,
+        0.23,
+        0.17,
+        0.18,
+        0.24,
+        0.2,
+        0.28,
+        0.25,
+        0.27,
+        0.25,
+    ]
+    angles = [15, 17, 19, 9, 15, 25, 33, 34, 32, 34, 26, 32, 42, 40, 46, 48, 52, 62]
+
     # plot the spectra
-    plot_multi_spectra(
+    fig, ax = plot_multi_spectra(
         stars,
         path,
         mlam4=True,
-        range=[0.75, 5.5],
-        norm_range=[1, 1.1],
+        range=[0.75, 5.55],
+        norm_range=[0.95, 1.05],
         spread=True,
         exclude=["IRS", "STIS_Opt"],
+        text_offsets=offsets,
+        text_angles=angles,
+        class_offset=False,
         pdf=True,
         outname="red_stars.pdf",
     )
+    ax.set_ylim(0.6, 18)
+    fig.savefig("../Figures/red_stars.pdf", bbox_inches="tight")
+
+
+def plot_unused_spectra(path):
+    stars = [
+        "HD014422",
+        "HD052721",
+        "HD206773",
+        "HD034921",
+        "HD037023",
+        "HD037020",
+        "HD037022",
+    ]
 
 
 if __name__ == "__main__":
