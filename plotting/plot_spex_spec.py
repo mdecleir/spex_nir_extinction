@@ -4,7 +4,7 @@
 from measure_extinction.plotting.plot_spec import plot_multi_spectra
 
 
-def plot_comp_spectra(path):
+def plot_comp_spectra(inpath, outpath):
     # define the names of the comparison stars (first the main sequence stars and then the giant stars, sorted by spectral type from B8 to O4)
     stars = [
         "HD034759",
@@ -47,7 +47,7 @@ def plot_comp_spectra(path):
     # plot the spectra
     fig, ax = plot_multi_spectra(
         stars,
-        path,
+        inpath,
         mlam4=True,
         range=[0.75, 5.6],
         norm_range=[0.95, 1.05],
@@ -79,10 +79,10 @@ def plot_comp_spectra(path):
         arrowprops=dict(arrowstyle="-[, widthB=9, lengthB=1.8", lw=3),
     )
 
-    fig.savefig("../Figures/comp_stars.pdf", bbox_inches="tight")
+    fig.savefig(outpath + "comp_stars.pdf", bbox_inches="tight")
 
 
-def plot_red_spectra(path):
+def plot_red_spectra(inpath, outpath):
     # define the names of the reddened stars (sorted by A(V) from low to high)
     stars = [
         "HD156247",
@@ -131,7 +131,7 @@ def plot_red_spectra(path):
     # plot the spectra
     fig, ax = plot_multi_spectra(
         stars,
-        path,
+        inpath,
         mlam4=True,
         range=[0.75, 5.5],
         norm_range=[0.95, 1.05],
@@ -144,10 +144,10 @@ def plot_red_spectra(path):
         outname="red_stars.pdf",
     )
     ax.set_ylim(0.6, 18)
-    fig.savefig("../Figures/red_stars.pdf", bbox_inches="tight")
+    fig.savefig(outpath + "red_stars.pdf", bbox_inches="tight")
 
 
-def plot_unused_spectra(path):
+def plot_unused_spectra(inpath, outpath):
     # define the names of the reddened stars that cannot be used to measure an extinction curve (sorted by steepness)
     stars = [
         "HD037022",
@@ -171,7 +171,7 @@ def plot_unused_spectra(path):
     angles = [14, 17, 17, 18, 22, 26, 32]
     fig, ax = plot_multi_spectra(
         stars,
-        path,
+        inpath,
         mlam4=True,
         range=[0.75, 5.4],
         norm_range=[0.95, 1.05],
@@ -183,11 +183,12 @@ def plot_unused_spectra(path):
         outname="bad_stars.pdf",
     )
     ax.set_ylim(0.6, 11)
-    fig.savefig("../Figures/bad_stars.pdf", bbox_inches="tight")
+    fig.savefig(outpath + "bad_stars.pdf", bbox_inches="tight")
 
 
 if __name__ == "__main__":
-    path = "/Users/mdecleir/Documents/NIR_ext/Data/"
-    plot_comp_spectra(path)
-    plot_red_spectra(path)
-    plot_unused_spectra(path)
+    inpath = "/Users/mdecleir/Documents/NIR_ext/Data/"
+    outpath = "/Users/mdecleir/spex_nir_extinction/Figures/"
+    plot_comp_spectra(inpath, outpath)
+    plot_red_spectra(inpath, outpath)
+    plot_unused_spectra(inpath, outpath)
