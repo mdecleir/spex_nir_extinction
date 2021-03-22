@@ -213,6 +213,7 @@ def fit_spex_ext(starpair, path, functype="pow", ice=False, exclude=None):
     ----------
     starpair : string
         Name of the star pair for which to fit the extinction curve, in the format "reddenedstarname_comparisonstarname" (no spaces)
+        or "average" to fit the average extinction curve
 
     path : string
         Path to the data files
@@ -268,11 +269,14 @@ def fit_spex_ext(starpair, path, functype="pow", ice=False, exclude=None):
     fit2 = EmceeFitter(nsteps=10000, burnfrac=0.1, save_samples=emcee_samples_file)
 
     # add parameter bounds
-    fit_result_lev.amplitude_0.bounds = (0, 2)
-    fit_result_lev.alpha_0.bounds = (0, 4)
-    fit_result_lev.Av_1.bounds = (0, 10)
+    for param in fit_result_lev.param_names:
+        if "amplitude" in param:
+            getattr(fit_result_lev, param).bounds = (0, 2)
+        elif "alpha" in param:
+            getattr(fit_result_lev, param).bounds = (0, 4)
+        elif "Av" in param:
+            getattr(fit_result_lev, param).bounds = (0, 10)
     fit_result_mcmc = fit2(fit_result_lev, waves, exts, weights=1 / exts_unc)
-    print(fit_result_mcmc)
 
     # create standard MCMC plots
     fit2.plot_emcee_results(
@@ -326,7 +330,7 @@ def fit_spex_ext(starpair, path, functype="pow", ice=False, exclude=None):
                 getattr(fit_result, param).unc_plus,
             )
             extdata.calc_RV()
-            print(extdata.columns)
+            print(extdata.columns["RV"])
     extdata.save("%s%s_ext.fits" % (path, starpair.lower()))
 
 

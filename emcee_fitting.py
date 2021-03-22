@@ -360,6 +360,7 @@ class EmceeFitter(Fitter):
 
         # plot the 1D and 2D likelihood functions in a traditional triangle plot
         nwalkers, nsteps = sampler.lnprobability.shape
+
         # discard the 1st burn_frac (burn in)
         flat_samples = sampler.get_chain(discard=int(self.burnfrac * nsteps), flat=True)
         nflatsteps, ndim = flat_samples.shape
