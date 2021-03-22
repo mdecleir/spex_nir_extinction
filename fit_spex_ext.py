@@ -212,8 +212,7 @@ def fit_spex_ext(starpair, path, functype="pow", ice=False, exclude=None):
     Parameters
     ----------
     starpair : string
-        Name of the star pair for which to fit the extinction curve, in the format "reddenedstarname_comparisonstarname" (no spaces)
-        or "average" to fit the average extinction curve
+        Name of the star pair for which to fit the extinction curve, in the format "reddenedstarname_comparisonstarname" (no spaces), or "average" to fit the average extinction curve
 
     path : string
         Path to the data files

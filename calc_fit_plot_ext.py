@@ -1,17 +1,18 @@
 # This script is intended to automate the calculation, fitting and plotting of the extinction curves of all stars in the sample.
 import numpy as np
+import pandas as pd
 import matplotlib.pyplot as plt
 from matplotlib.ticker import MaxNLocator
 
 from measure_extinction.extdata import ExtData, AverageExtData
-from measure_extinction.utils.calc_ext import calc_extinction
+from measure_extinction.utils.calc_ext import calc_extinction, calc_ave_ext
 from measure_extinction.plotting.plot_ext import plot_multi_extinction, plot_extinction
 
 from fit_spex_ext import fit_spex_ext, fit_features
 
 
 # function to calculate, fit and plot all extinction curves
-def calc_fit_plot(starpair_list):
+def calc_fit_plot(starpair_list, path):
     for starpair in starpair_list:
         redstar = starpair.split("_")[0]
         compstar = starpair.split("_")[1]
@@ -32,6 +33,29 @@ def calc_fit_plot(starpair_list):
             exclude=["IRS"],
             pdf=True,
         )
+
+
+def calc_fit_average(starpair_list, path):
+    """
+    Calculate and fit the average extinction curve
+
+    Parameters
+    ----------
+    starpair_list : list of strings
+        List of star pairs for which to calculate and fit the average extinction curve, in the format "reddenedstarname_comparisonstarname" (no spaces)
+
+       path : string
+           Path to the data files
+
+    Returns
+    -------
+    Calculates, saves and fits the average extinction curve (output: path/average_ext.fits)
+    """
+    # calculate the average extinction curve
+    calc_ave_ext(starpair_list, path, min_number=3)
+
+    # fit the average extinction curve
+    fit_spex_ext("average", path)
 
 
 def fit_plot_features(starpair):
@@ -252,59 +276,49 @@ def plot_residuals(starpair_list):
 
 
 if __name__ == "__main__":
-    # define the path and the names of the star pairs in the format "reddenedstarname_comparisonstarname" (first the main sequence stars and then the giant stars, sorted by spectral type from B8 to O4)
+    # define the path of the data files
     path = "/Users/mdecleir/Documents/NIR_ext/Data/"
-    starpair_list = [
-        "HD017505_HD214680",
+
+    # read the list of all star pairs
+    table = pd.read_table("red-comp.list", comment="#")
+    redstars = table["reddened"]
+    compstars = table["comparison"]
+    starpair_list = []
+    for redstar, compstar in zip(redstars, compstars):
+        starpair_list.append(redstar + "_" + compstar)
+
+    # calculate, fit and plot all extinction curves
+    calc_fit_plot(starpair_list, path)
+
+    # calculate and fit the average diffuse extinction curve
+    diffuse = [
         "BD+56d524_HD034816",
         "HD013338_HD031726",
-        "HD014250_HD042560",
-        "HD014422_HD214680",
+        # "HD014250_HD042560",
+        # "HD014422_HD214680",
         "HD014956_HD188209",
+        "HD017505_HD214680",
         "HD029309_HD042560",
-        "HD029647_HD042560",
-        "HD034921_HD214680",
-        "HD037020_HD034816",
-        "HD037022_HD034816",
-        "HD037023_HD034816",
+        # "HD029647_HD042560", # dense
+        # "HD034921_HD214680",
+        # "HD037020_HD034816",
+        # "HD037022_HD034816",
+        # "HD037023_HD034816",
         "HD037061_HD034816",
         "HD038087_HD034816",
-        "HD052721_HD091316",
+        # "HD052721_HD091316",
         "HD156247_HD031726",
         "HD166734_HD188209",
         "HD183143_HD188209",
         "HD185418_HD034816",
         "HD192660_HD204172",
         "HD204827_HD204172",
-        "HD206773_HD003360",
+        # "HD206773_HD003360",
         "HD229238_HD214680",
-        "HD283809_HD003360",
+        # "HD283809_HD003360", # dense
         "HD294264_HD034759",
     ]
-
-    # # read the list of stars for which to measure and plot the extinction curve
-    # table = pd.read_table("red-comp.list", comment="#")
-    # redstars = table["reddened"]
-    # compstars = table["comparison"]
-    # starpair_list = []
-    #
-    # # calculate and plot the extinction curve for every star
-    # for redstar, compstar in zip(redstars, compstars):
-    #     # create the starpair_list
-    #     starpair_list.append(redstar + "_" + compstar)
-
-    # calculate, fit and plot all extinction curves
-    calc_fit_plot(starpair_list)
-
-    # plot_multi_extinction(
-    #     starpair_list,
-    #     path,
-    #     range=[0.76, 5.5],
-    #     # alax=True,
-    #     # spread=True,
-    #     exclude=["IRS"],
-    #     pdf=True,
-    # )
+    calc_fit_average(diffuse, path)
 
     # create more plots
     fs = 18
@@ -321,7 +335,6 @@ if __name__ == "__main__":
     # fit features for HD283809 separately
     # fit_plot_features("HD283809_HD003360")
 
-    # parser.add_argument("--alax", help="plot A(lambda)/A(X)", action="store_true")
     # parser.add_argument(
     #     "--average", help="plot the average extinction curve", action="store_true"
     # )
@@ -344,10 +357,6 @@ if __name__ == "__main__":
     #     type=float,
     #     default=None,
     # )
-    # parser.add_argument(
-    #     "--spread", help="spread the curves out over the figure", action="store_true"
-    # )
-
 
 #
 # from measure_extinction.plotting.plot_ext import (
@@ -385,27 +394,8 @@ if __name__ == "__main__":
 #         "HD294264_HD031726",  # this
 #     ]
 #
-#     # plot the extinction curves
-#     # plot_multi_extinction(
-#     #     starpair_list,
-#     #     path,
-#     #     range=[0.76, 5.5],
-#     #     alax=True,
-#     #     spread=False,
-#     #     exclude=["IRS"],
-#     #     pdf=True,
-#     # )
 #
-#     # plot the average extinction curve in a separate plot
-#     # plot_average(
-#     #     starpair_list,
-#     #     path,
-#     #     powerlaw=True,
-#     #     extmodels=True,
-#     #     range=[0.78, 6.1],
-#     #     exclude=["IRS"],
-#     #     pdf=True,
-#     # )
+
 #
 #     # calculate RV
 #     # average.columns["RV"] = 1 / (average.exts["BAND"][1] - 1)
