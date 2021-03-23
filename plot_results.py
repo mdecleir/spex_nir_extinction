@@ -92,9 +92,60 @@ def plot_param_triangle(starpair_list, flagged):
     plt.savefig("Figures/params.pdf", bbox_inches="tight")
 
 
+def plot_rv_dep(inpath, outpath, starpair_list, flagged):
+    AVs, RVs = (np.zeros(len(starpair_list)) for i in range(2))
+    waves, exts, uncs = [], [], []
+    wave_list = [1, 2, 3, 4, 5]
+    alavs = np.full((len(wave_list), len(starpair_list)), np.nan)
+
+    # retrieve the information for all stars
+    for i, starpair in enumerate(starpair_list):
+        if starpair in flagged:
+            continue
+
+        # retrieve R(V)
+        extdata = ExtData("%s%s_ext.fits" % (inpath, starpair.lower()))
+        RVs[i] = extdata.columns["RV"][0]
+
+        # transform the curve from E(lambda-V) to A(lambda)/A(V)
+        extdata.trans_elv_alav()
+
+        # get the good data in flat arrays
+        (flat_waves, flat_exts, flat_exts_unc) = extdata.get_fitdata(
+            ["SpeX_SXD", "SpeX_LXD"]
+        )
+
+        # get the A(lambda)/A(V) at certain wavelengths
+        for j, wave in enumerate(wave_list):
+            indx = np.abs(flat_waves.value - wave).argmin()
+            if (np.abs(flat_waves[indx].value - wave)) < 0.01:
+                alavs[j][i] = flat_exts[indx]
+
+    # plot A(lambda)/A(V) vs. R(V) at certain wavelengths
+    fig, ax = plt.subplots(len(wave_list), figsize=(7, len(wave_list) * 4), sharex=True)
+    for j, wave in enumerate(wave_list):
+        ax[j].scatter(RVs, alavs[j])
+        rho, p = stats.spearmanr(RVs, alavs[j], nan_policy="omit")
+        ax[j].text(
+            0.95,
+            0.9,
+            r"$\rho =$" + "{:1.2f}".format(rho),
+            fontsize=12,
+            horizontalalignment="right",
+            transform=ax[j].transAxes,
+        )
+        ax[j].set_ylabel("$A($" + str(wave) + "$\mu m)/A(V)$")
+
+    # finalize the plot
+    plt.xlabel("R(V)")
+    plt.subplots_adjust(hspace=0)
+    plt.savefig(outpath + "RV_dep.pdf", bbox_inches="tight")
+
+
 if __name__ == "__main__":
     # define the path and the names of the star pairs in the format "reddenedstarname_comparisonstarname"
-    path = "/Users/mdecleir/Documents/NIR_ext/Data/"
+    inpath = "/Users/mdecleir/Documents/NIR_ext/Data/"
+    outpath = "/Users/mdecleir/spex_nir_extinction/Figures/"
     starpair_list = [
         "HD017505_HD214680",
         "BD+56d524_HD034816",
@@ -130,7 +181,10 @@ if __name__ == "__main__":
         "HD037022_HD034816",
         "HD052721_HD091316",
         "HD206773_HD003360",
+        "HD014250_HD042560",
+        "HD014422_HD214680",
     ]
 
     # create plot
     plot_param_triangle(starpair_list, flagged)
+    plot_rv_dep(inpath, outpath, starpair_list, flagged)
