@@ -143,7 +143,7 @@ def plot_rv_dep(inpath, outpath, starpair_list, flagged):
 
 
 if __name__ == "__main__":
-    # define the path and the names of the star pairs in the format "reddenedstarname_comparisonstarname"
+    # define the input and output path and the names of the star pairs in the format "reddenedstarname_comparisonstarname"
     inpath = "/Users/mdecleir/Documents/NIR_ext/Data/"
     outpath = "/Users/mdecleir/spex_nir_extinction/Figures/"
     starpair_list = [
