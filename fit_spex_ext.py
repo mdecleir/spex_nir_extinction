@@ -2,11 +2,13 @@
 
 import numpy as np
 import matplotlib.pyplot as plt
+import astropy.units as u
 
 from astropy.modeling.powerlaws import PowerLaw1D
 from astropy.modeling.polynomial import Polynomial1D
 from astropy.modeling.models import Drude1D, Gaussian1D, Lorentz1D, custom_model
 from astropy.modeling.fitting import LevMarLSQFitter
+from astropy import uncertainty as unc
 
 from measure_extinction.extdata import ExtData
 from dust_extinction.conversions import AxAvToExv
@@ -322,13 +324,34 @@ def fit_spex_ext(starpair, path, functype="pow", ice=False, exclude=None):
     extdata.model["params"] = []
     for param in fit_result.param_names:
         extdata.model["params"].append(getattr(fit_result, param))
+        # save the column information (A(V), E(B-V) and R(V))
         if "Av" in param:
             extdata.columns["AV"] = (
                 getattr(fit_result, param).value,
                 getattr(fit_result, param).unc_minus,
                 getattr(fit_result, param).unc_plus,
             )
-            extdata.calc_RV()
+            # calculate the distrubtion of R(V) from the distributions of A(V) and E(B-V)
+            av_dist = getattr(fit_result, param).posterior
+            b_indx = np.abs(extdata.waves["BAND"] - 0.438 * u.micron).argmin()
+            ebv_dist = unc.normal(
+                extdata.exts["BAND"][b_indx],
+                std=extdata.uncs["BAND"][b_indx],
+                n_samples=av_dist.n_samples,
+            )
+            ebv_per = ebv_dist.pdf_percentiles([16.0, 50.0, 84.0])
+            extdata.columns["EBV"] = (
+                ebv_per[1],
+                ebv_per[1] - ebv_per[0],
+                ebv_per[2] - ebv_per[1],
+            )
+            rv_dist = av_dist / ebv_dist
+            rv_per = rv_dist.pdf_percentiles([16.0, 50.0, 84.0])
+            extdata.columns["RV"] = (
+                rv_per[1],
+                rv_per[1] - rv_per[0],
+                rv_per[2] - rv_per[1],
+            )
             print(extdata.columns["RV"])
     extdata.save("%s%s_ext.fits" % (path, starpair.lower()))
 
