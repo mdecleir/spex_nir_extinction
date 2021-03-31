@@ -10,9 +10,11 @@ from astropy.modeling import models, fitting
 from measure_extinction.extdata import ExtData
 
 
-def fit_RV_dep(inpath, outpath, starpair_list):
+def get_data(inpath, starpair_list):
     """
-    Fit the relationship between A(lambda)/A(V) and R(V)
+    Obtain the required data for all stars in starpair_list:
+        - A(lambda)/A(V)
+        - R(V)
 
     Parameters
     ----------
@@ -23,20 +25,16 @@ def fit_RV_dep(inpath, outpath, starpair_list):
         Path to save the output
 
     starpair_list : list of strings
-        List of star pairs to include in the fitting, in the format "reddenedstarname_comparisonstarname" (no spaces)
+        List of star pairs for which to collect the data, in the format "reddenedstarname_comparisonstarname" (no spaces)
     """
     RVs = np.zeros(len(starpair_list))
-    waves, exts, uncs = [], [], []
 
-    # determine the wavelengths at which to calculate the R(V) relationship
-    extdata = ExtData("%s%s_ext.fits" % (inpath, starpair_list[2].lower()))
+    # determine the wavelengths at which to retrieve the extinction data
+    extdata_model = ExtData("%s%s_ext.fits" % (inpath, starpair_list[0].lower()))
     waves = np.concatenate(
-        (extdata.waves["SpeX_SXD"].value, extdata.waves["SpeX_LXD"].value)
+        (extdata_model.waves["SpeX_SXD"].value, extdata_model.waves["SpeX_LXD"].value)
     )
-    print(len(waves))
-
-    wave_list = np.arange(0.8, 5.5, 0.01)
-    alavs = np.full((len(wave_list), len(starpair_list)), np.nan)
+    alavs = np.full((len(waves), len(starpair_list)), np.nan)
 
     # retrieve the information for all stars
     for i, starpair in enumerate(starpair_list):
@@ -52,54 +50,100 @@ def fit_RV_dep(inpath, outpath, starpair_list):
             ["SpeX_SXD", "SpeX_LXD"]
         )
 
-        ind1 = np.abs(flat_waves.value - 3).argmin()
+        # ind1 = np.abs(flat_waves.value - 3).argmin()
         # print(flat_waves[ind1], flat_exts[ind1], extdata.columns["AV"][0])
         # # go from A(lambda)/A(V) to A(lambda)/A(1)
         # flat_exts = flat_exts / flat_exts[ind1]
 
-        # get the A(lambda)/A(V) at certain wavelengths
-        for j, wave in enumerate(wave_list):
-            indx = np.abs(flat_waves.value - wave).argmin()
-            if (np.abs(flat_waves[indx].value - wave)) < 0.01:
-                alavs[j][i] = flat_exts[indx]
+        # retrieve A(lambda)/A(V) at all wavelengths
+        for j, wave in enumerate(waves):
+            if wave in flat_waves.value:
+                alavs[j][i] = flat_exts[flat_waves.value == wave]
     print(alavs)
 
-    # for every wavelength, fit a straight line through the A(lambda)/A(V) vs. 1/R(V) data
+    return RVs, alavs, waves
+
+
+def plot_rv_dep():
+    """
+    Plot the relationship between A(lambda)/A(V) and R(V) at a handfull wavelengths
+
+    Parameters
+    ----------
+    inpath : string
+        Path to the input data files
+
+    outpath : string
+        Path to save the output
+
+    starpair_list : list of strings
+        List of star pairs to include in the fitting, in the format "reddenedstarname_comparisonstarname" (no spaces)
+    """
+
+
+def fit_rv_dep(inpath, outpath, starpair_list):
+    """
+    Fit the relationship between A(lambda)/A(V) and R(V)
+
+    Parameters
+    ----------
+    inpath : string
+        Path to the input data files
+
+    outpath : string
+        Path to save the output
+
+    starpair_list : list of strings
+        List of star pairs to include in the fitting, in the format "reddenedstarname_comparisonstarname" (no spaces)
+    """
+    # collect the data to be fitted
+    RVs, alavs, waves = get_data(inpath, starpair_list)
+
+    # for every wavelength, fit a straight line through the A(lambda)/A(V) vs. R(V) data
     fit = fitting.LinearLSQFitter()
     line_func = models.Linear1D()
     slopes = []
     intercepts = []
     coeffs = []
     chi2s = []
-    for j, wave in enumerate(wave_list):
+    npts = []
+    stds = []
+    for j, wave in enumerate(waves):
         mask = ~np.isnan(alavs[j])
-        fitted_line = fit(line_func, 1 / RVs[mask], alavs[j][mask])
-        chi2 = np.sum((fitted_line(1 / RVs[mask]) - alavs[j][mask]) ** 2)
+        npts.append(np.sum(mask))
+        fitted_line = fit(line_func, RVs[mask], alavs[j][mask])
+        std = np.sqrt(np.sum((fitted_line(RVs[mask]) - alavs[j][mask]) ** 2))
+        # chi2 = np.sum((fitted_line(RVs[mask]) - alavs[j][mask]) ** 2)
         # rho, p = stats.spearmanr(RVs, alavs[j], nan_policy="omit")
+
         slopes.append(fitted_line.slope.value)
         intercepts.append(fitted_line.intercept.value)
+        stds.append(std)
         # coeffs.append(rho)
-        chi2s.append(chi2)
+        # chi2s.append(chi2)
 
     # plot the slopes and intercepts vs. wavelength
     fig, ax = plt.subplots(2, sharex=True)
-    ax[0].scatter(wave_list, slopes, s=5)
-    ax[1].scatter(wave_list, intercepts, s=5)
+    ax[0].scatter(waves, slopes, s=1)
+    ax[1].scatter(waves, intercepts, s=1)
 
     # add CCM89 RV dependent relation
-    waves = [0.7, 0.9, 1.25, 1.6, 2.2, 3.4]
-    intercepts = [0.8686, 0.68, 0.4008, 0.2693, 0.1615, 0.08]
-    slopes = [-0.366, -0.6239, -0.3679, -0.2473, -0.1483, -0.0734]
-    ax[0].scatter(waves, slopes, s=5)
-    ax[1].scatter(waves, intercepts, s=5)
+    # waves_CCM89 = [0.7, 0.9, 1.25, 1.6, 2.2, 3.4]
+    # slopes_CCM89 = [-0.366, -0.6239, -0.3679, -0.2473, -0.1483, -0.0734]
+    # intercepts_CCM89 = [0.8686, 0.68, 0.4008, 0.2693, 0.1615, 0.08]
+    # ax[0].scatter(waves_CCM89, slopes_CCM89, s=5)
+    # ax[1].scatter(waves_CCM89, intercepts_CCM89, s=5)
 
     plt.xlabel("wavelength")
+    ax[0].set_ylim(-0.05, 0.1)
+    ax[1].set_ylim(-0.3, 0.4)
     ax[0].set_ylabel("slopes")
     ax[1].set_ylabel("intercepts")
     plt.subplots_adjust(hspace=0)
     plt.savefig(outpath + "RV_slope_inter.pdf", bbox_inches="tight")
 
     # plot A(lambda)/A(V) vs. R(V) at certain wavelengths
+    plot_rv_dep()
     lim_waves = [
         20,
         120,
@@ -182,7 +226,7 @@ if __name__ == "__main__":
     good_stars = list((Counter(starpair_list) - Counter(flagged)).elements())
 
     # fit the RV dependence
-    fit_RV_dep(inpath, outpath, good_stars)
+    fit_rv_dep(inpath, outpath, good_stars)
 
     #     mcmcfile = bfile.replace(".fits", ".h5")
     #     reader = emcee.backends.HDFBackend(mcmcfile)
