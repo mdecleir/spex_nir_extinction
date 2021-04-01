@@ -21,13 +21,14 @@ def get_data(inpath, starpair_list):
     inpath : string
         Path to the input data files
 
-    outpath : string
-        Path to save the output
-
     starpair_list : list of strings
         List of star pairs for which to collect the data, in the format "reddenedstarname_comparisonstarname" (no spaces)
+
+    Returns
+    -------
+    R(V) with uncertainties, A(lambda)/A(V) with uncertainties, wavelengths
     """
-    RVs = np.zeros(len(starpair_list))
+    RVs = np.zeros((len(starpair_list), 3))
 
     # determine the wavelengths at which to retrieve the extinction data
     extdata_model = ExtData("%s%s_ext.fits" % (inpath, starpair_list[0].lower()))
@@ -35,12 +36,13 @@ def get_data(inpath, starpair_list):
         (extdata_model.waves["SpeX_SXD"].value, extdata_model.waves["SpeX_LXD"].value)
     )
     alavs = np.full((len(waves), len(starpair_list)), np.nan)
+    alav_uncs = np.full((len(waves), len(starpair_list)), np.nan)
 
     # retrieve the information for all stars
     for i, starpair in enumerate(starpair_list):
         # retrieve R(V)
         extdata = ExtData("%s%s_ext.fits" % (inpath, starpair.lower()))
-        RVs[i] = extdata.columns["RV"][0]
+        RVs[i] = np.array(extdata.columns["RV"])
 
         # transform the curve from E(lambda-V) to A(lambda)/A(V)
         extdata.trans_elv_alav()
@@ -59,31 +61,88 @@ def get_data(inpath, starpair_list):
         for j, wave in enumerate(waves):
             if wave in flat_waves.value:
                 alavs[j][i] = flat_exts[flat_waves.value == wave]
-    print(alavs)
+                alav_uncs[j][i] = flat_exts_unc[flat_waves.value == wave]
 
-    return RVs, alavs, waves
+    return RVs, alavs, alav_uncs, waves
 
 
-def plot_rv_dep():
+def plot_rv_dep(outpath, RVs, alavs, alav_uncs, waves, plot_waves, slopes, intercepts):
     """
-    Plot the relationship between A(lambda)/A(V) and R(V) at a handfull wavelengths
+    Plot the relationship between A(lambda)/A(V) and R(V)-3.1 at wavelengths "plot_waves"
 
     Parameters
     ----------
-    inpath : string
-        Path to the input data files
-
     outpath : string
-        Path to save the output
+        Path to save the plot
 
-    starpair_list : list of strings
-        List of star pairs to include in the fitting, in the format "reddenedstarname_comparisonstarname" (no spaces)
+    RVs : np.ndarray
+        Numpy array with R(V) values and uncertainties
+
+    alavs : np.ndarray
+        Numpy array with A(lambda)/A(V) values
+
+    alav_uncs : np.ndarray
+        Numpy array with A(lambda)/A(V) uncertainties
+
+    waves : np.ndarray
+        Numpy array with all wavelengths for which A(lambda)/A(V) is given
+
+    plot_waves : list
+        List with wavelengths for which to plot the relationship
+
+    slopes : np.ndarray
+        Numpy array with the slopes of the linear relationship
+
+    intercepts : np.ndarray
+        Numpy array with the intercepts of the linear relationship
+
+    Returns
+    -------
+    Plot of A(lambda)/A(V) vs. R(V)-3.1 at wavelengths "plot_waves"
     """
+    fig, ax = plt.subplots(
+        len(plot_waves), figsize=(7, len(plot_waves) * 4), sharex=True
+    )
+
+    for j, wave in enumerate(plot_waves):
+        indx = np.abs(waves - wave).argmin()
+        # plot the data and the fitted line
+        ax[j].errorbar(
+            RVs[:, 0] - 3.1,
+            alavs[indx],
+            xerr=(RVs[:, 1], RVs[:, 2]),
+            yerr=alav_uncs[indx],
+            ms=10,
+            fmt=".k",
+            elinewidth=0.5,
+        )
+        ax[j].plot(
+            np.arange(-1, 4, 0.1),
+            slopes[indx] * np.arange(-1, 4, 0.1) + intercepts[indx],
+            color="forestgreen",
+            ls="--",
+            alpha=0.6,
+        )
+        rho, p = stats.spearmanr(RVs[:, 0] - 3.1, alavs[indx], nan_policy="omit")
+        ax[j].text(
+            0.97,
+            0.08,
+            r"$\rho =$" + "{:1.2f}".format(rho),
+            fontsize=fs * 0.8,
+            horizontalalignment="right",
+            transform=ax[j].transAxes,
+        )
+        ax[j].set_ylabel("$A($" + "{:1.2f}".format(wave) + "$\mu m)/A(V)$")
+
+    # finalize the plot
+    plt.xlabel("R(V) - 3.1")
+    plt.subplots_adjust(hspace=0)
+    plt.savefig(outpath + "RV_dep.pdf", bbox_inches="tight")
 
 
-def fit_rv_dep(inpath, outpath, starpair_list):
+def fit_plot_rv_dep(inpath, outpath, starpair_list):
     """
-    Fit the relationship between A(lambda)/A(V) and R(V)
+    Fit and plot the relationship between A(lambda)/A(V) and R(V)
 
     Parameters
     ----------
@@ -97,86 +156,67 @@ def fit_rv_dep(inpath, outpath, starpair_list):
         List of star pairs to include in the fitting, in the format "reddenedstarname_comparisonstarname" (no spaces)
     """
     # collect the data to be fitted
-    RVs, alavs, waves = get_data(inpath, starpair_list)
+    RVs, alavs, alav_uncs, waves = get_data(inpath, starpair_list)
+    RV_vals = RVs[:, 0]
 
     # for every wavelength, fit a straight line through the A(lambda)/A(V) vs. R(V) data
     fit = fitting.LinearLSQFitter()
     line_func = models.Linear1D()
-    slopes = []
-    intercepts = []
-    coeffs = []
-    chi2s = []
-    npts = []
-    stds = []
+    slopes, intercepts, stds = np.full((3, len(waves)), np.nan)
+
     for j, wave in enumerate(waves):
         mask = ~np.isnan(alavs[j])
-        npts.append(np.sum(mask))
-        fitted_line = fit(line_func, RVs[mask], alavs[j][mask])
-        std = np.sqrt(np.sum((fitted_line(RVs[mask]) - alavs[j][mask]) ** 2))
-        # chi2 = np.sum((fitted_line(RVs[mask]) - alavs[j][mask]) ** 2)
-        # rho, p = stats.spearmanr(RVs, alavs[j], nan_policy="omit")
-
-        slopes.append(fitted_line.slope.value)
-        intercepts.append(fitted_line.intercept.value)
-        stds.append(std)
-        # coeffs.append(rho)
-        # chi2s.append(chi2)
-
-    # plot the slopes and intercepts vs. wavelength
-    fig, ax = plt.subplots(2, sharex=True)
-    ax[0].scatter(waves, slopes, s=1)
-    ax[1].scatter(waves, intercepts, s=1)
-
-    # add CCM89 RV dependent relation
-    # waves_CCM89 = [0.7, 0.9, 1.25, 1.6, 2.2, 3.4]
-    # slopes_CCM89 = [-0.366, -0.6239, -0.3679, -0.2473, -0.1483, -0.0734]
-    # intercepts_CCM89 = [0.8686, 0.68, 0.4008, 0.2693, 0.1615, 0.08]
-    # ax[0].scatter(waves_CCM89, slopes_CCM89, s=5)
-    # ax[1].scatter(waves_CCM89, intercepts_CCM89, s=5)
-
-    plt.xlabel("wavelength")
-    ax[0].set_ylim(-0.05, 0.1)
-    ax[1].set_ylim(-0.3, 0.4)
-    ax[0].set_ylabel("slopes")
-    ax[1].set_ylabel("intercepts")
-    plt.subplots_adjust(hspace=0)
-    plt.savefig(outpath + "RV_slope_inter.pdf", bbox_inches="tight")
+        npts = np.sum(mask)
+        # require at least 5 data points for the fitting
+        if npts < 5:
+            continue
+        fitted_line = fit(line_func, (RV_vals[mask] - 3.1), alavs[j][mask])
+        std = np.sqrt(
+            np.sum((fitted_line(RV_vals[mask] - 3.1) - alavs[j][mask]) ** 2)
+            / (npts - 1)
+        )
+        slopes[j] = fitted_line.slope.value
+        intercepts[j] = fitted_line.intercept.value
+        stds[j] = std
 
     # plot A(lambda)/A(V) vs. R(V) at certain wavelengths
-    plot_rv_dep()
-    lim_waves = [
-        20,
-        120,
-        220,
-        320,
-        420,
-    ]
-    fig, ax = plt.subplots(len(lim_waves), figsize=(7, len(lim_waves) * 4), sharex=True)
-    for j, indx in enumerate(lim_waves):
-        # print(wave_list[indx], alavs[indx])
-        mask = ~np.isnan(alavs[indx])
-        fitted_line = fit(line_func, 1 / RVs[mask], alavs[indx][mask])
-        ax[j].plot(1 / RVs, fitted_line(1 / RVs))
-        ax[j].scatter(1 / RVs, alavs[indx])
-        rho, p = stats.spearmanr(1 / RVs, alavs[indx], nan_policy="omit")
-        ax[j].text(
-            0.95,
-            0.9,
-            r"$\rho =$" + "{:1.2f}".format(rho),
-            fontsize=12,
-            horizontalalignment="right",
-            transform=ax[j].transAxes,
-        )
-        ax[j].set_ylabel("$A($" + str(int(wave_list[indx])) + "$\mu m)/A(V)$")
+    plot_waves = [0.82, 1.6499686, 2.4502702, 3.5002365, 4.6994233]
+    plot_rv_dep(outpath, RVs, alavs, alav_uncs, waves, plot_waves, slopes, intercepts)
+
+    # plot the slopes and intercepts vs. wavelength
+    fig, ax = plt.subplots(3, figsize=(9, 8), sharex=True)
+    ax[0].scatter(waves, slopes, s=0.3)
+    ax[1].scatter(waves, intercepts, s=0.3)
+    ax[2].scatter(waves, stds, s=0.3)
+    for wave in plot_waves:
+        indx = np.abs(waves - wave).argmin()
+        ax[0].scatter(wave, slopes[indx], color="tab:orange", marker="x")
+        ax[1].scatter(wave, intercepts[indx], color="tab:orange", marker="x")
+        ax[2].scatter(wave, stds[indx], color="tab:orange", marker="x")
+
+    # fit the slopes and intercepts vs. wavelength
+    # fit2 = fitting.LevMarLSQFitter()
+    # powerlaw = models.PowerLaw1D(amplitude=0.3, alpha=1.6)
+    # fit_slopes = fit2(powerlaw, waves, slopes)
+    # fit_intercepts = fit2(powerlaw, waves, intercepts)
+    # print(fit_intercepts)
+    # # ax[0].plot(waves, fit_slopes(waves))
+    # # ax[1].plot(waves, fit_intercepts(intercepts))
+    # pl = models.PowerLaw1D(amplitude=0.35, alpha=1.6)
+    # ax[1].plot(waves, pl(waves))
+
     # finalize the plot
-    plt.xlabel("1/R(V)")
+    plt.xlabel(r"$\lambda$ [$\mu m$]")
+    ax[0].set_ylim(-0.01, 0.075)
+    ax[1].set_ylim(-0.03, 0.6)
+    ax[2].set_ylim(0.01, 0.075)
+    ax[0].set_ylabel("a")
+    ax[1].set_ylabel("b")
+    ax[2].set_ylabel(r"$\sigma$")
+    ax[0].axhline(ls="--", color="k", lw=1, alpha=0.6)
+    ax[1].axhline(ls="--", color="k", lw=1, alpha=0.6)
     plt.subplots_adjust(hspace=0)
-    plt.savefig(outpath + "RV_dep.pdf", bbox_inches="tight")
-
-
-import emcee
-import astropy.units as u
-from astropy import uncertainty as unc
+    plt.savefig(outpath + "RV_slope_inter.pdf", bbox_inches="tight")
 
 
 if __name__ == "__main__":
@@ -222,105 +262,23 @@ if __name__ == "__main__":
         "HD206773_HD003360",
     ]
 
+    # settings for the plotting
+    fs = 18
+    plt.rc("font", size=fs)
+    plt.rc("xtick", direction="in", labelsize=fs * 0.8)
+    plt.rc("ytick", direction="in", labelsize=fs * 0.8)
+    plt.rc("xtick.major", width=1, size=8)
+    plt.rc("ytick.major", width=1, size=8)
+
     # subtract the flagged stars from the star pair list
     good_stars = list((Counter(starpair_list) - Counter(flagged)).elements())
 
-    # fit the RV dependence
-    fit_rv_dep(inpath, outpath, good_stars)
+    # fit and plot the RV dependence
+    fit_plot_rv_dep(inpath, outpath, good_stars)
 
-    #     mcmcfile = bfile.replace(".fits", ".h5")
-    #     reader = emcee.backends.HDFBackend(mcmcfile)
-    #     nsteps, nwalkers = reader.get_log_prob().shape
-    #     samples = reader.get_chain(discard=int(0.4 * nsteps), flat=True)
-    #
-    #     avs_dist = unc.Distribution(samples[:, -1])
-    #     av_per = avs_dist.pdf_percentiles([16.0, 50.0, 84.0])
-    #     avs[k] = av_per[1]
-    #     avs_unc[1, k] = av_per[2] - av_per[1]
-    #     avs_unc[0, k] = av_per[1] - av_per[0]
-    #     # print(avs_dist.pdf_percentiles([33., 50., 87.]))
-    #
-    #     (indxs,) = np.where(
-    #         (cext.waves["BAND"] > 0.4 * u.micron)
-    #         & (cext.waves["BAND"] < 0.5 * u.micron)
-    #     )
-    #     ebvs_dist = unc.normal(
-    #         cext.exts["BAND"][indxs[0]],
-    #         std=cext.uncs["BAND"][indxs[0]],
-    #         n_samples=avs_dist.n_samples,
-    #     )
-    #     ebvs[k] = ebvs_dist.pdf_mean()
-    #     ebvs_unc[k] = ebvs_dist.pdf_std()
-    #
-    #     rvs_dist = avs_dist / ebvs_dist
-    #     rv_per = rvs_dist.pdf_percentiles([16.0, 50.0, 84.0])
-    #     rvs[k] = rv_per[1]
-    #     rvs_unc[1, k] = rv_per[2] - rv_per[1]
-    #     rvs_unc[0, k] = rv_per[1] - rv_per[0]
-    #
-    #     (indxs,) = np.where(cext.names["BAND"] == args.band)
-    #     exts[k] = (cext.exts["BAND"][indxs[0]] / avs[k]) + 1.0
-    #     exts_unc[k] = cext.uncs["BAND"][indxs[0]]
-    #
-    # # plots
-    # fontsize = 14
-    #
-    # font = {"size": fontsize}
-    #
-    # matplotlib.rc("font", **font)
-    #
-    # matplotlib.rc("lines", linewidth=1)
-    # matplotlib.rc("axes", linewidth=2)
-    # matplotlib.rc("xtick.major", width=2)
-    # matplotlib.rc("xtick.minor", width=2)
-    # matplotlib.rc("ytick.major", width=2)
-    # matplotlib.rc("ytick.minor", width=2)
-    #
-    # figsize = (5.5, 5.0)
-    # fig, ax = pyplot.subplots(figsize=figsize)
-    #
-    # diffuse = []
-    # for tname in extnames:
-    #     if tname == "hd283809":
-    #         diffuse.append(False)
-    #     elif tname == "hd029647":
-    #         diffuse.append(False)
-    #     else:
-    #         diffuse.append(True)
-    # diffuse = np.array(diffuse)
-    # dense = ~diffuse
-    #
-    # # R(V) versus A(V)
-    # ax.errorbar(
-    #     rvs[diffuse],
-    #     exts[diffuse],
-    #     xerr=rvs_unc[:, diffuse],
-    #     yerr=exts_unc[diffuse],
-    #     fmt="go",
-    #     label="diffuse",
-    # )
-    # ax.errorbar(
-    #     rvs[dense],
-    #     exts[dense],
-    #     xerr=rvs_unc[:, dense],
-    #     yerr=exts_unc[dense],
-    #     fmt="bo",
-    #     markerfacecolor="none",
-    #     label="dense",
-    # )
-    # ax.set_xlabel(r"$R(V)$")
-    # ax.set_ylabel(rf"$A({args.band})/A(V)$")
-    # ax.tick_params("both", length=10, width=2, which="major")
-    # ax.tick_params("both", length=5, width=1, which="minor")
-    #
-    # ax.legend()
-    #
-    # fig.tight_layout()
-    #
-    # save_str = f"_rvdep{args.band}"
-    # if args.png:
-    #     fig.savefig(args.filelist.replace(".dat", save_str + ".png"))
-    # elif args.pdf:
-    #     fig.savefig(args.filelist.replace(".dat", save_str + ".pdf"))
-    # else:
-    #     pyplot.show()
+    # add CCM89 1/RV dependent relation (can only be used with 1/RV)
+    # waves_CCM89 = [0.7, 0.9, 1.25, 1.6, 2.2, 3.4]
+    # slopes_CCM89 = [-0.366, -0.6239, -0.3679, -0.2473, -0.1483, -0.0734]
+    # intercepts_CCM89 = [0.8686, 0.68, 0.4008, 0.2693, 0.1615, 0.08]
+    # ax[0].scatter(waves_CCM89, slopes_CCM89, s=5)
+    # ax[1].scatter(waves_CCM89, intercepts_CCM89, s=5)
