@@ -6,6 +6,7 @@ from matplotlib import pyplot as plt
 from collections import Counter
 from scipy import stats
 from astropy.modeling import models, fitting
+from astropy.table import Table
 
 from measure_extinction.extdata import ExtData
 
@@ -145,6 +146,91 @@ def plot_rv_dep(outpath, RVs, alavs, alav_uncs, waves, plot_waves, slopes, inter
     plt.savefig(outpath + "RV_dep.pdf", bbox_inches="tight")
 
 
+def table_rv_dep(outpath, waves, table_waves, slopes, intercepts, stds):
+    """
+    Create a (aastex) table with the slopes, intercepts and standard deviations at wavelengths "table_waves"
+
+    Parameters
+    ----------
+    outpath : string
+        Path to save the table
+
+    waves : np.ndarray
+        Numpy array with all wavelengths for which the slopes, intercepts and standard deviations are given
+
+    table_waves : list
+        List with wavelengths to be included in the table
+
+    slopes : np.ndarray
+        Numpy array with the slopes of the linear relationship
+
+    intercepts : np.ndarray
+        Numpy array with the intercepts of the linear relationship
+
+    stds : np.ndarray
+        Numpy array with the standard deviations about the linear fit
+
+    Returns
+    -------
+    Table in aastex format of the R(V)-dependent relationship at wavelengths "table_waves"
+    """
+    table = Table(
+        names=(
+            r"$\lambda [\micron]$",
+            r"a($\lambda$)",
+            r"b($\lambda$)",
+            r"$\sigma(\lambda)$",
+            r"$\lambda 2[\micron]$",
+            r"a2($\lambda$)",
+            r"b2($\lambda$)",
+            r"$2\sigma(\lambda)$",
+        ),
+        dtype=("str", "str", "str", "str", "str", "str", "str", "str"),
+    )
+
+    # take out the wavelengths without measurements
+    mask = ~np.isnan(slopes)
+    waves = waves[mask]
+    slopes = slopes[mask]
+    intercepts = intercepts[mask]
+    stds = stds[mask]
+    half = int(len(table_waves) / 2)
+    indxs = []
+    for wave in table_waves:
+        indx = np.abs(waves - wave).argmin()
+        if np.abs(waves[indx] - wave) < 0.025:
+            indxs.append(indx)
+
+    half = int(len(indxs) / 2)
+    indxs1 = indxs[:half]
+    indxs2 = indxs[half:]
+
+    for ind1, ind2 in zip(indxs1, indxs2):
+        table.add_row(
+            (
+                "{:.2f}".format(waves[ind1]),
+                "{:.3f}".format(slopes[ind1]),
+                "{:.3f}".format(intercepts[ind1]),
+                "{:.3f}".format(stds[ind1]),
+                "{:.2f}".format(waves[ind2]),
+                "{:.3f}".format(slopes[ind2]),
+                "{:.3f}".format(intercepts[ind2]),
+                "{:.3f}".format(stds[ind2]),
+            )
+        )
+
+    table.write(
+        outpath + "RV_dep.tex",
+        format="aastex",
+        latexdict={
+            "col_align": "cccc|cccc",
+            "tabletype": "deluxetable",
+            "caption": r"Parameters of the linear relationship between extinction A($\lambda$)/A(V) and R(V). For every wavelength, the intercept a, slope b, and standard deviation $\sigma$ are given. \label{tab:RV_dep}",
+        },
+        overwrite=True,
+    )
+
+
 def fit_slopes_intercepts(slopes, intercepts, stds, waves):
     """
     Fit the slopes, intercepts and standard deviations vs. wavelength
@@ -164,17 +250,23 @@ def fit_slopes_intercepts(slopes, intercepts, stds, waves):
         Numpy array with all wavelengths
     """
     mask = ~np.isnan(slopes)
+    short_wave_mask = waves < 4.1
     fit_lev = fitting.LevMarLSQFitter()
     fit_lin = fitting.LinearLSQFitter()
-    polynomial = models.Polynomial1D(degree=4)
+    polynomial = models.Polynomial1D(degree=6)
     powerlaw = models.PowerLaw1D(fixed={"x_0": True})
     fit_slopes = fit_lin(polynomial, waves[mask], slopes[mask])
     fit_intercepts = fit_lev(powerlaw, waves[mask], intercepts[mask])
-    fit_stds = fit_lev(powerlaw, waves[mask], stds[mask])
+    fit_stds = fit_lev(
+        powerlaw, waves[mask * short_wave_mask], stds[mask * short_wave_mask]
+    )
+    fit_stds = fit_lin(
+        polynomial, waves[mask * short_wave_mask], stds[mask * short_wave_mask]
+    )
     return fit_slopes, fit_intercepts, fit_stds
 
 
-def fit_plot_rv_dep(inpath, outpath, starpair_list):
+def fit_plot_rv_dep(inpath, plot_path, table_path, starpair_list):
     """
     Fit and plot the relationship between A(lambda)/A(V) and R(V)
 
@@ -183,8 +275,11 @@ def fit_plot_rv_dep(inpath, outpath, starpair_list):
     inpath : string
         Path to the input data files
 
-    outpath : string
-        Path to save the output
+    plot_path : string
+        Path to save the plots
+
+    table_path : string
+        Path to save the table
 
     starpair_list : list of strings
         List of star pairs to include in the fitting, in the format "reddenedstarname_comparisonstarname" (no spaces)
@@ -225,7 +320,11 @@ def fit_plot_rv_dep(inpath, outpath, starpair_list):
 
     # plot A(lambda)/A(V) vs. R(V) at certain wavelengths
     plot_waves = [0.83997476, 1.6499686, 2.4502702, 3.5002365, 4.6994233]
-    plot_rv_dep(outpath, RVs, alavs, alav_uncs, waves, plot_waves, slopes, intercepts)
+    plot_rv_dep(plot_path, RVs, alavs, alav_uncs, waves, plot_waves, slopes, intercepts)
+
+    # provide a table with the results at certain wavelengths
+    table_waves = np.arange(0.8, 5.2, 0.05)
+    table_rv_dep(table_path, waves, table_waves, slopes, intercepts, stds)
 
     # plot the slopes and intercepts vs. wavelength
     fig, ax = plt.subplots(3, figsize=(9, 8), sharex=True)
@@ -264,8 +363,8 @@ def fit_plot_rv_dep(inpath, outpath, starpair_list):
     #     color="firebrick",
     #     ls="--",
     #     alpha=0.7,
-    #     label=r"$%5.2f \lambda ^{-%5.2f}$"
-    #     % (fit_stds.amplitude.value, fit_stds.alpha.value),
+    #     # label=r"$%5.2f \lambda ^{-%5.2f}$"
+    #     # % (fit_stds.amplitude.value, fit_stds.alpha.value),
     # )
     # print(fit_stds)
 
@@ -282,13 +381,14 @@ def fit_plot_rv_dep(inpath, outpath, starpair_list):
     ax[0].axhline(ls="--", color="k", lw=1, alpha=0.6)
     ax[1].axhline(ls="--", color="k", lw=1, alpha=0.6)
     plt.subplots_adjust(hspace=0)
-    plt.savefig(outpath + "RV_slope_inter.pdf", bbox_inches="tight")
+    plt.savefig(plot_path + "RV_slope_inter.pdf", bbox_inches="tight")
 
 
 if __name__ == "__main__":
     # define the input and output path and the names of the star pairs in the format "reddenedstarname_comparisonstarname"
     inpath = "/Users/mdecleir/Documents/NIR_ext/Data/"
-    outpath = "/Users/mdecleir/spex_nir_extinction/Figures/"
+    plot_path = "/Users/mdecleir/spex_nir_extinction/Figures/"
+    table_path = "/Users/mdecleir/spex_nir_extinction/Tables/"
     starpair_list = [
         "BD+56d524_HD034816",
         "HD013338_HD031726",
@@ -340,7 +440,7 @@ if __name__ == "__main__":
     good_stars = list((Counter(starpair_list) - Counter(flagged)).elements())
 
     # fit and plot the RV dependence
-    fit_plot_rv_dep(inpath, outpath, good_stars)
+    fit_plot_rv_dep(inpath, plot_path, table_path, good_stars)
 
     # add CCM89 1/RV dependent relation (can only be used with 1/RV)
     # waves_CCM89 = [0.7, 0.9, 1.25, 1.6, 2.2, 3.4]
