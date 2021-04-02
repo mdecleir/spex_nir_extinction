@@ -32,8 +32,13 @@ def get_data(inpath, starpair_list):
 
     # determine the wavelengths at which to retrieve the extinction data
     extdata_model = ExtData("%s%s_ext.fits" % (inpath, starpair_list[0].lower()))
-    waves = np.concatenate(
-        (extdata_model.waves["SpeX_SXD"].value, extdata_model.waves["SpeX_LXD"].value)
+    waves = np.sort(
+        np.concatenate(
+            (
+                extdata_model.waves["SpeX_SXD"].value,
+                extdata_model.waves["SpeX_LXD"].value,
+            )
+        )
     )
     alavs = np.full((len(waves), len(starpair_list)), np.nan)
     alav_uncs = np.full((len(waves), len(starpair_list)), np.nan)
@@ -140,6 +145,35 @@ def plot_rv_dep(outpath, RVs, alavs, alav_uncs, waves, plot_waves, slopes, inter
     plt.savefig(outpath + "RV_dep.pdf", bbox_inches="tight")
 
 
+def fit_slopes_intercepts(slopes, intercepts, stds, waves):
+    """
+    Fit the slopes, intercepts and standard deviations vs. wavelength
+
+    Parameters
+    ----------
+    slopes : np.ndarray
+        Numpy array with the slopes of the linear relationship
+
+    intercepts : np.ndarray
+        Numpy array with the intercepts of the linear relationship
+
+    stds : np.ndarray
+        Numpy array with the standard deviations about the linear fit
+
+    waves : np.ndarray
+        Numpy array with all wavelengths
+    """
+    mask = ~np.isnan(slopes)
+    fit_lev = fitting.LevMarLSQFitter()
+    fit_lin = fitting.LinearLSQFitter()
+    polynomial = models.Polynomial1D(degree=4)
+    powerlaw = models.PowerLaw1D(fixed={"x_0": True})
+    fit_slopes = fit_lin(polynomial, waves[mask], slopes[mask])
+    fit_intercepts = fit_lev(powerlaw, waves[mask], intercepts[mask])
+    fit_stds = fit_lev(powerlaw, waves[mask], stds[mask])
+    return fit_slopes, fit_intercepts, fit_stds
+
+
 def fit_plot_rv_dep(inpath, outpath, starpair_list):
     """
     Fit and plot the relationship between A(lambda)/A(V) and R(V)
@@ -170,17 +204,27 @@ def fit_plot_rv_dep(inpath, outpath, starpair_list):
         # require at least 5 data points for the fitting
         if npts < 5:
             continue
-        fitted_line = fit(line_func, (RV_vals[mask] - 3.1), alavs[j][mask])
+        fitted_line = fit(
+            line_func,
+            (RV_vals[mask] - 3.1),
+            alavs[j][mask],
+            weights=1 / alav_uncs[j][mask],
+        )
+        # calculate the standard deviation about the fit
+        # the "residuals" in the fit_info is the sum of the squared residuals
+        # std = np.sqrt(fit.fit_info["residuals"] / (npts - 2))
+        # this does not work when using weights in the fitting
+        # dividing by npts-2 is needed, because there are npts-2 degrees of freedom (subtract 1 for the slope and 1 for the intercept)
         std = np.sqrt(
             np.sum((fitted_line(RV_vals[mask] - 3.1) - alavs[j][mask]) ** 2)
-            / (npts - 1)
+            / (npts - 2)
         )
         slopes[j] = fitted_line.slope.value
         intercepts[j] = fitted_line.intercept.value
         stds[j] = std
 
     # plot A(lambda)/A(V) vs. R(V) at certain wavelengths
-    plot_waves = [0.82, 1.6499686, 2.4502702, 3.5002365, 4.6994233]
+    plot_waves = [0.83997476, 1.6499686, 2.4502702, 3.5002365, 4.6994233]
     plot_rv_dep(outpath, RVs, alavs, alav_uncs, waves, plot_waves, slopes, intercepts)
 
     # plot the slopes and intercepts vs. wavelength
@@ -194,24 +238,46 @@ def fit_plot_rv_dep(inpath, outpath, starpair_list):
         ax[1].scatter(wave, intercepts[indx], color="tab:orange", marker="x")
         ax[2].scatter(wave, stds[indx], color="tab:orange", marker="x")
 
-    # fit the slopes and intercepts vs. wavelength
-    # fit2 = fitting.LevMarLSQFitter()
-    # powerlaw = models.PowerLaw1D(amplitude=0.3, alpha=1.6)
-    # fit_slopes = fit2(powerlaw, waves, slopes)
-    # fit_intercepts = fit2(powerlaw, waves, intercepts)
-    # print(fit_intercepts)
-    # # ax[0].plot(waves, fit_slopes(waves))
-    # # ax[1].plot(waves, fit_intercepts(intercepts))
-    # pl = models.PowerLaw1D(amplitude=0.35, alpha=1.6)
-    # ax[1].plot(waves, pl(waves))
+    # fit the slopes, intercepts and standard deviations vs. wavelength, and add the fit to the plot
+    fit_slopes, fit_intercepts, fit_stds = fit_slopes_intercepts(
+        slopes, intercepts, stds, waves
+    )
+    # ax[0].plot(
+    #     waves,
+    #     fit_slopes(waves),
+    #     color="firebrick",
+    #     ls="--",
+    #     alpha=0.7,
+    # )
+    ax[1].plot(
+        waves[:-120],
+        fit_intercepts(waves[:-120]),
+        color="firebrick",
+        ls="--",
+        alpha=0.7,
+        label=r"$%5.2f \lambda ^{-%5.2f}$"
+        % (fit_intercepts.amplitude.value, fit_intercepts.alpha.value),
+    )
+    # ax[2].plot(
+    #     waves[:-120],
+    #     fit_stds(waves[:-120]),
+    #     color="firebrick",
+    #     ls="--",
+    #     alpha=0.7,
+    #     label=r"$%5.2f \lambda ^{-%5.2f}$"
+    #     % (fit_stds.amplitude.value, fit_stds.alpha.value),
+    # )
+    # print(fit_stds)
 
     # finalize the plot
+    ax[1].legend(fontsize=0.8 * fs)
     plt.xlabel(r"$\lambda$ [$\mu m$]")
+    plt.xlim(0.7, 5.3)
     ax[0].set_ylim(-0.01, 0.075)
     ax[1].set_ylim(-0.03, 0.6)
     ax[2].set_ylim(0.01, 0.075)
-    ax[0].set_ylabel("a")
-    ax[1].set_ylabel("b")
+    ax[0].set_ylabel("b")
+    ax[1].set_ylabel("a")
     ax[2].set_ylabel(r"$\sigma$")
     ax[0].axhline(ls="--", color="k", lw=1, alpha=0.6)
     ax[1].axhline(ls="--", color="k", lw=1, alpha=0.6)
