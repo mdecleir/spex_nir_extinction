@@ -11,7 +11,7 @@ from astropy.table import Table
 from measure_extinction.extdata import ExtData
 
 
-def get_data(inpath, starpair_list):
+def get_data(inpath, starpair_list, norm="V"):
     """
     Obtain the required data for all stars in starpair_list:
         - A(lambda)/A(V)
@@ -24,6 +24,9 @@ def get_data(inpath, starpair_list):
 
     starpair_list : list of strings
         List of star pairs for which to collect the data, in the format "reddenedstarname_comparisonstarname" (no spaces)
+
+    norm : string [default="V"]
+        Band or wavelength for the normalization
 
     Returns
     -------
@@ -58,10 +61,11 @@ def get_data(inpath, starpair_list):
             ["SpeX_SXD", "SpeX_LXD"]
         )
 
-        # ind1 = np.abs(flat_waves.value - 3).argmin()
-        # print(flat_waves[ind1], flat_exts[ind1], extdata.columns["AV"][0])
-        # # go from A(lambda)/A(V) to A(lambda)/A(1)
-        # flat_exts = flat_exts / flat_exts[ind1]
+        # convert extinction from A(lambda)/A(V) to A(lambda)/A(norm) if norm is not "V"
+        if norm != "V":
+            ind1 = np.abs(flat_waves.value - norm).argmin()
+            flat_exts = flat_exts / flat_exts[ind1]
+            flat_exts_unc = flat_exts_unc / flat_exts[ind1]
 
         # retrieve A(lambda)/A(V) at all wavelengths
         for j, wave in enumerate(waves):
@@ -72,7 +76,9 @@ def get_data(inpath, starpair_list):
     return RVs, alavs, alav_uncs, waves
 
 
-def plot_rv_dep(outpath, RVs, alavs, alav_uncs, waves, plot_waves, slopes, intercepts):
+def plot_rv_dep(
+    outpath, RVs, alavs, alav_uncs, waves, plot_waves, slopes, intercepts, norm="V"
+):
     """
     Plot the relationship between A(lambda)/A(V) and R(V)-3.1 at wavelengths "plot_waves"
 
@@ -102,6 +108,9 @@ def plot_rv_dep(outpath, RVs, alavs, alav_uncs, waves, plot_waves, slopes, inter
     intercepts : np.ndarray
         Numpy array with the intercepts of the linear relationship
 
+    norm : string [default="V"]
+        Band or wavelength for the normalization
+
     Returns
     -------
     Plot of A(lambda)/A(V) vs. R(V)-3.1 at wavelengths "plot_waves"
@@ -109,6 +118,8 @@ def plot_rv_dep(outpath, RVs, alavs, alav_uncs, waves, plot_waves, slopes, inter
     fig, ax = plt.subplots(
         len(plot_waves), figsize=(7, len(plot_waves) * 4), sharex=True
     )
+    if norm != "V":
+        norm = str(norm) + r"\mu m"
 
     for j, wave in enumerate(plot_waves):
         indx = np.abs(waves - wave).argmin()
@@ -138,12 +149,12 @@ def plot_rv_dep(outpath, RVs, alavs, alav_uncs, waves, plot_waves, slopes, inter
             horizontalalignment="right",
             transform=ax[j].transAxes,
         )
-        ax[j].set_ylabel("$A($" + "{:1.2f}".format(wave) + "$\mu m)/A(V)$")
+        ax[j].set_ylabel(r"$A(" + "{:1.2f}".format(wave) + "\mu m)/A(" + norm + ")$")
 
     # finalize the plot
     plt.xlabel("R(V) - 3.1")
     plt.subplots_adjust(hspace=0)
-    plt.savefig(outpath + "RV_dep.pdf", bbox_inches="tight")
+    plt.savefig(outpath + "RV_dep" + norm.split("\\")[0] + ".pdf", bbox_inches="tight")
 
 
 def table_rv_dep(outpath, waves, table_waves, slopes, intercepts, stds):
@@ -266,7 +277,7 @@ def fit_slopes_intercepts(slopes, intercepts, stds, waves):
     return fit_slopes, fit_intercepts, fit_stds
 
 
-def fit_plot_rv_dep(inpath, plot_path, table_path, starpair_list):
+def fit_plot_rv_dep(inpath, plot_path, table_path, starpair_list, norm="V"):
     """
     Fit and plot the relationship between A(lambda)/A(V) and R(V)
 
@@ -283,9 +294,12 @@ def fit_plot_rv_dep(inpath, plot_path, table_path, starpair_list):
 
     starpair_list : list of strings
         List of star pairs to include in the fitting, in the format "reddenedstarname_comparisonstarname" (no spaces)
+
+    norm : string [default="V"]
+        Band or wavelength for the normalization
     """
     # collect the data to be fitted
-    RVs, alavs, alav_uncs, waves = get_data(inpath, starpair_list)
+    RVs, alavs, alav_uncs, waves = get_data(inpath, starpair_list, norm)
     RV_vals = RVs[:, 0]
 
     # for every wavelength, fit a straight line through the A(lambda)/A(V) vs. R(V) data
@@ -320,7 +334,17 @@ def fit_plot_rv_dep(inpath, plot_path, table_path, starpair_list):
 
     # plot A(lambda)/A(V) vs. R(V) at certain wavelengths
     plot_waves = [0.83997476, 1.6499686, 2.4502702, 3.5002365, 4.6994233]
-    plot_rv_dep(plot_path, RVs, alavs, alav_uncs, waves, plot_waves, slopes, intercepts)
+    plot_rv_dep(
+        plot_path,
+        RVs,
+        alavs,
+        alav_uncs,
+        waves,
+        plot_waves,
+        slopes,
+        intercepts,
+        norm=norm,
+    )
 
     # provide a table with the results at certain wavelengths
     table_waves = np.arange(0.8, 5.2, 0.05)
@@ -381,7 +405,7 @@ def fit_plot_rv_dep(inpath, plot_path, table_path, starpair_list):
     ax[0].axhline(ls="--", color="k", lw=1, alpha=0.6)
     ax[1].axhline(ls="--", color="k", lw=1, alpha=0.6)
     plt.subplots_adjust(hspace=0)
-    plt.savefig(plot_path + "RV_slope_inter.pdf", bbox_inches="tight")
+    plt.savefig(plot_path + "RV_slope_inter" + str(norm) + ".pdf", bbox_inches="tight")
 
 
 if __name__ == "__main__":
@@ -441,6 +465,9 @@ if __name__ == "__main__":
 
     # fit and plot the RV dependence
     fit_plot_rv_dep(inpath, plot_path, table_path, good_stars)
+
+    # fit and plot the RV dependence when normalizing to 1 micron instead of to the V-band
+    fit_plot_rv_dep(inpath, plot_path, table_path, good_stars, norm=1)
 
     # add CCM89 1/RV dependent relation (can only be used with 1/RV)
     # waves_CCM89 = [0.7, 0.9, 1.25, 1.6, 2.2, 3.4]
