@@ -14,13 +14,14 @@ def table_results(inpath, outpath, starpair_list, flagged):
     Create tables with the fitting results:
         - One to save as a text file
         - One in the aastex format
+
     Parameters
     ----------
     inpath : string
         Path to the input data files
 
     outpath : string
-        Path to save the output files
+        Path to save the tables
 
     starpair_list : list of strings
         List of star pairs to include in the tables, in the format "reddenedstarname_comparisonstarname" (no spaces)
@@ -161,7 +162,7 @@ def table_results(inpath, outpath, starpair_list, flagged):
         format="aastex",
         latexdict={
             "tabletype": "deluxetable*",
-            "caption": r"MCMC fitting results for the extinction curves: the amplitude and index $\alpha$ of the powerlaw, and A(V) are directly obtained from the fitting, while E(B-V) is obtained from the observations, and R(V) is calculated as R(V)=A(V)/E(B-V).",
+            "caption": r"MCMC fitting results for the extinction curves: the amplitude and index $\alpha$ of the powerlaw, and A(V) are directly obtained from the fitting, while E(B-V) is obtained from the observations, and R(V) is calculated as R(V)=A(V)/E(B-V). \label{tab:fit_results}",
         },
         overwrite=True,
     )
@@ -250,56 +251,6 @@ def plot_param_triangle(inpath, outpath, starpair_list, flagged):
     ax[1, 2].axis("off")
     plt.subplots_adjust(wspace=0, hspace=0)
     plt.savefig(outpath + "params.pdf", bbox_inches="tight")
-
-
-def plot_rv_dep(inpath, outpath, starpair_list, flagged):
-    AVs, RVs = (np.zeros(len(starpair_list)) for i in range(2))
-    waves, exts, uncs = [], [], []
-    wave_list = [1, 2, 3, 4, 5]
-    alavs = np.full((len(wave_list), len(starpair_list)), np.nan)
-
-    # retrieve the information for all stars
-    for i, starpair in enumerate(starpair_list):
-        if starpair in flagged:
-            continue
-
-        # retrieve R(V)
-        extdata = ExtData("%s%s_ext.fits" % (inpath, starpair.lower()))
-        RVs[i] = extdata.columns["RV"][0]
-
-        # transform the curve from E(lambda-V) to A(lambda)/A(V)
-        extdata.trans_elv_alav()
-
-        # get the good data in flat arrays
-        (flat_waves, flat_exts, flat_exts_unc) = extdata.get_fitdata(
-            ["SpeX_SXD", "SpeX_LXD"]
-        )
-
-        # get the A(lambda)/A(V) at certain wavelengths
-        for j, wave in enumerate(wave_list):
-            indx = np.abs(flat_waves.value - wave).argmin()
-            if (np.abs(flat_waves[indx].value - wave)) < 0.01:
-                alavs[j][i] = flat_exts[indx]
-
-    # plot A(lambda)/A(V) vs. R(V) at certain wavelengths
-    fig, ax = plt.subplots(len(wave_list), figsize=(7, len(wave_list) * 4), sharex=True)
-    for j, wave in enumerate(wave_list):
-        ax[j].scatter(1 / RVs, alavs[j])
-        rho, p = stats.spearmanr(RVs, alavs[j], nan_policy="omit")
-        ax[j].text(
-            0.95,
-            0.9,
-            r"$\rho =$" + "{:1.2f}".format(rho),
-            fontsize=12,
-            horizontalalignment="right",
-            transform=ax[j].transAxes,
-        )
-        ax[j].set_ylabel("$A($" + str(wave) + "$\mu m)/A(V)$")
-
-    # finalize the plot
-    plt.xlabel("R(V)")
-    plt.subplots_adjust(hspace=0)
-    plt.savefig(outpath + "RV_dep2.pdf", bbox_inches="tight")
 
 
 def compare_AV_lit():
