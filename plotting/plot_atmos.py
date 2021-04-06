@@ -6,7 +6,7 @@ from matplotlib import pyplot as plt
 
 
 def plot_atmos():
-    hdulist = fits.open("atran2000.fits")
+    hdulist = fits.open("/Users/mdecleir/spex_nir_extinction/atran2000.fits")
     data = hdulist[0].data
 
     fs = 16
