@@ -288,7 +288,10 @@ def compare_AV_lit(ext_path, lit_path, starpair_list):
     VCG04.loc[355:392, "Name"] = VCG04.loc[355:392, "Name"].str.replace(" ", "d")
     VCG04.set_index("Name", inplace=True)
 
-    # Fitzpatrick et al. 2019
+    # Gordon et al. 2009
+    G09 = pd.read_table(
+        lit_path + "Gordon+09_tab2.dat", sep="\s+", skiprows=[0, 1], index_col="#Name"
+    )
 
     # Gordon et al. 2021
     G21 = pd.read_table(lit_path + "Gordon+21_tab5.dat", sep="\s+", index_col="Star")
@@ -311,11 +314,18 @@ def compare_AV_lit(ext_path, lit_path, starpair_list):
                 color="tab:orange",
                 marker="d",
             )
+        if red_star in G09.index:
+            ax.scatter(
+                extdata.columns["AV"][0],
+                G09.loc[red_star, "AV"],
+                color="tab:green",
+                marker="^",
+            )
         if red_star.lower() in G21.index:
             ax.scatter(
                 extdata.columns["AV"][0],
                 G21.loc[red_star.lower(), "A(V)"],
-                color="tab:green",
+                color="tab:red",
                 marker="P",
             )
         ax.errorbar(
@@ -330,14 +340,21 @@ def compare_AV_lit(ext_path, lit_path, starpair_list):
 
     handle1 = Line2D([], [], lw=0, color="tab:blue", marker="o")
     handle2 = Line2D([], [], lw=0, color="tab:orange", marker="d")
-    handle3 = Line2D([], [], lw=0, color="tab:green", marker="P")
-    labels = ["Cardelli+1989", "Valencic+2004", "Gordon+2021"]
-    handles = [handle1, handle2, handle3]
+    handle3 = Line2D([], [], lw=0, color="tab:green", marker="^")
+    handle4 = Line2D([], [], lw=0, color="tab:red", marker="P")
+
+    labels = [
+        "Cardelli et. al 1989",
+        "Valencic et al. 2004",
+        "Gordon et al. 2009",
+        "Gordon et al. 2021",
+    ]
+    handles = [handle1, handle2, handle3, handle4]
     ax.plot([1, 5.7], [1, 5.7], color="k", ls="--")
     ax.set_xlim(0.9, 5.8)
     ax.set_ylim(0.9, 5.8)
     ax.set_aspect("equal", adjustable="box")
-    plt.legend(handles, labels, fontsize=fs * 0.8)
+    plt.legend(handles, labels, fontsize=fs * 0.75)
     plt.xlabel("A(V) from this work")
     plt.ylabel("A(V) from the literature")
     plt.savefig(plot_path + "AV_comparison.pdf", bbox_inches="tight")
