@@ -186,9 +186,23 @@ def table_rv_dep(outpath, waves, table_waves, slopes, intercepts, stds, norm="V"
 
     Returns
     -------
-    Table in aastex format of the R(V)-dependent relationship at wavelengths "table_waves"
+    Tables of the R(V)-dependent relationship at wavelengths "table_waves":
+        - in aaxtex format for the paper
+        - in ascii format
     """
-    table = Table(
+    # create a table in the ascii format
+    table_asc = Table(
+        [waves, slopes, intercepts, stds],
+        names=("wavelength", "slope", "intercept", "std"),
+    )
+    table_asc.write(
+        outpath + "RV_dep" + str(norm) + ".txt",
+        format="ascii.commented_header",
+        overwrite=True,
+    )
+
+    # create a table in the aastex format
+    table_lat = Table(
         names=(
             r"$\lambda [\micron]$",
             r"a($\lambda$)",
@@ -220,7 +234,7 @@ def table_rv_dep(outpath, waves, table_waves, slopes, intercepts, stds, norm="V"
     indxs2 = indxs[half:]
 
     for ind1, ind2 in zip(indxs1, indxs2):
-        table.add_row(
+        table_lat.add_row(
             (
                 "{:.2f}".format(waves[ind1]),
                 "{:.3f}".format(slopes[ind1]),
@@ -233,7 +247,7 @@ def table_rv_dep(outpath, waves, table_waves, slopes, intercepts, stds, norm="V"
             )
         )
 
-    table.write(
+    table_lat.write(
         outpath + "RV_dep" + str(norm) + ".tex",
         format="aastex",
         latexdict={
