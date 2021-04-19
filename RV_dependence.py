@@ -1,10 +1,11 @@
 # This script calculates and fits the R(V) dependent relationship
 
 import numpy as np
+import pandas as pd
 
 from matplotlib import pyplot as plt
 from collections import Counter
-from scipy import stats
+from scipy import stats, interpolate
 from astropy.modeling import models, fitting
 from astropy.table import Table
 
@@ -276,22 +277,63 @@ def fit_slopes_intercepts(slopes, intercepts, stds, waves):
 
     waves : np.ndarray
         Numpy array with all wavelengths
+
+    Returns
+    -------
+    spline_wave : np.ndarray
+        Numpy array with the anchor wavelengths
+
+    spline_slope : np.ndarray
+        Numpy array with the anchor slopes
+
+    spline_std : np.ndarray
+        Numpy array with the anchor standard deviations
+
+    fit_slopes : tuple
+        The interpolated spline for the slopes
+
+    fit_intercepts : astropy model
+        The fitted model for the intercepts
+
+    fit_stds : tuple
+        The interpolated spline for the standard deviations
     """
+    # define a mask for the good data
     mask = ~np.isnan(slopes)
     short_wave_mask = waves < 4.1
+
+    # fit the intercepts with a power law
     fit_lev = fitting.LevMarLSQFitter()
-    fit_lin = fitting.LinearLSQFitter()
-    polynomial = models.Polynomial1D(degree=6)
     powerlaw = models.PowerLaw1D(fixed={"x_0": True})
-    fit_slopes = fit_lin(polynomial, waves[mask], slopes[mask])
     fit_intercepts = fit_lev(powerlaw, waves[mask], intercepts[mask])
-    fit_stds = fit_lev(
-        powerlaw, waves[mask * short_wave_mask], stds[mask * short_wave_mask]
+
+    # define the anchor points for the spline interpolation
+    # divide the data into 25 bins with the same number of data points in every bin
+    alloc, bin_edges = pd.qcut(waves[mask * short_wave_mask], q=25, retbins=True)
+    # calculate the median wavelength, slope and standard deviation in every bin
+    meds, edges, indices = stats.binned_statistic(
+        waves[mask * short_wave_mask],
+        (
+            waves[mask * short_wave_mask],
+            slopes[mask * short_wave_mask],
+            stds[mask * short_wave_mask],
+        ),
+        statistic="median",
+        bins=bin_edges,
     )
-    fit_stds = fit_lin(
-        polynomial, waves[mask * short_wave_mask], stds[mask * short_wave_mask]
-    )
-    return fit_slopes, fit_intercepts, fit_stds
+
+    # use the median values as the anchor points for the spline interpolation
+    spline_wave = meds[0][~np.isnan(meds[0])]
+    spline_slope = meds[1][~np.isnan(meds[1])]
+    spline_std = meds[2][~np.isnan(meds[2])]
+
+    # interpolate the slopes with a spline function
+    fit_slopes = interpolate.splrep(spline_wave, spline_slope)
+
+    # interpolate the standard deviations with a spline function
+    fit_stds = interpolate.splrep(spline_wave, spline_std)
+
+    return spline_wave, spline_slope, spline_std, fit_slopes, fit_intercepts, fit_stds
 
 
 def fit_plot_rv_dep(inpath, plot_path, table_path, starpair_list, norm="V"):
@@ -350,7 +392,7 @@ def fit_plot_rv_dep(inpath, plot_path, table_path, starpair_list, norm="V"):
         stds[j] = std
 
     # plot A(lambda)/A(V) vs. R(V) at certain wavelengths
-    plot_waves = [0.83997476, 1.6499686, 2.4502702, 3.5002365, 4.6994233]
+    plot_waves = [0.8492674, 1.6499686, 2.4502702, 3.5002365, 4.704127]
     plot_rv_dep(
         plot_path,
         RVs,
@@ -367,52 +409,64 @@ def fit_plot_rv_dep(inpath, plot_path, table_path, starpair_list, norm="V"):
     table_waves = np.arange(0.8, 5.2, 0.05)
     table_rv_dep(table_path, waves, table_waves, slopes, intercepts, stds, norm)
 
-    # plot the slopes and intercepts vs. wavelength
-    fig, ax = plt.subplots(3, figsize=(9, 8), sharex=True)
-    ax[0].scatter(waves, slopes, s=0.3)
-    ax[1].scatter(waves, intercepts, s=0.3)
-    ax[2].scatter(waves, stds, s=0.3)
+    # plot the slopes, intercepts and standard deviations vs. wavelength
+    # color the data points at wavelengths > 4.03 grey
+    fig, ax = plt.subplots(3, figsize=(9, 9), sharex=True)
+    short_waves = waves < 4.03
+    ax[0].scatter(waves[short_waves], slopes[short_waves], color="k", s=0.3)
+    ax[0].scatter(waves[~short_waves], slopes[~short_waves], color="grey", s=0.3)
+    ax[1].scatter(waves, intercepts, color="k", s=0.3)
+    ax[2].scatter(waves[short_waves], stds[short_waves], color="k", s=0.3)
+    ax[2].scatter(waves[~short_waves], stds[~short_waves], color="grey", s=0.3)
     for wave in plot_waves:
         indx = np.abs(waves - wave).argmin()
-        ax[0].scatter(wave, slopes[indx], color="tab:orange", marker="x")
-        ax[1].scatter(wave, intercepts[indx], color="tab:orange", marker="x")
-        ax[2].scatter(wave, stds[indx], color="tab:orange", marker="x")
+        ax[0].scatter(wave, slopes[indx], color="lime", s=50, marker="x", zorder=3)
+        ax[1].scatter(wave, intercepts[indx], color="lime", marker="x", zorder=3)
+        ax[2].scatter(wave, stds[indx], color="lime", marker="x", zorder=3)
 
     # fit the slopes, intercepts and standard deviations vs. wavelength, and add the fit to the plot
-    fit_slopes, fit_intercepts, fit_stds = fit_slopes_intercepts(
-        slopes, intercepts, stds, waves
+    (
+        spline_wave,
+        spline_slope,
+        spline_std,
+        fit_slopes,
+        fit_intercepts,
+        fit_stds,
+    ) = fit_slopes_intercepts(slopes, intercepts, stds, waves)
+    slope_spline = interpolate.splev(waves[short_waves], fit_slopes)
+    ax[0].scatter(spline_wave, spline_slope, color="r", marker="d", s=10)
+    ax[0].plot(
+        waves[short_waves],
+        slope_spline,
+        color="crimson",
+        ls="--",
+        alpha=0.7,
     )
-    # ax[0].plot(
-    #     waves,
-    #     fit_slopes(waves),
-    #     color="firebrick",
-    #     ls="--",
-    #     alpha=0.7,
-    # )
+
     ax[1].plot(
         waves[:-120],
         fit_intercepts(waves[:-120]),
-        color="firebrick",
+        color="crimson",
         ls="--",
         alpha=0.7,
-        label=r"$%5.2f \lambda ^{-%5.2f}$"
+        label=r"$%5.2f \ \lambda ^{-%5.2f}$"
         % (fit_intercepts.amplitude.value, fit_intercepts.alpha.value),
     )
-    # ax[2].plot(
-    #     waves[:-120],
-    #     fit_stds(waves[:-120]),
-    #     color="firebrick",
-    #     ls="--",
-    #     alpha=0.7,
-    #     # label=r"$%5.2f \lambda ^{-%5.2f}$"
-    #     # % (fit_stds.amplitude.value, fit_stds.alpha.value),
-    # )
-    # print(fit_stds)
 
-    # finalize the plot
+    std_spline = interpolate.splev(waves[short_waves], fit_stds)
+    ax[2].scatter(spline_wave, spline_std, color="r", marker="d", s=10)
+    ax[2].plot(
+        waves[short_waves],
+        std_spline,
+        color="crimson",
+        ls="--",
+        alpha=0.7,
+    )
+
+    # finalize and save the plot
     ax[1].legend(fontsize=0.8 * fs)
     plt.xlabel(r"$\lambda$ [$\mu m$]")
-    plt.xlim(0.7, 5.3)
+    plt.xlim(0.75, 5.2)
     ax[0].set_ylim(-0.01, 0.075)
     ax[1].set_ylim(-0.03, 0.6)
     ax[2].set_ylim(0.01, 0.075)
