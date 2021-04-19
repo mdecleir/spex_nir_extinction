@@ -158,29 +158,26 @@ def plot_rv_dep(
     plt.savefig(outpath + "RV_dep" + norm.split("\\")[0] + ".pdf", bbox_inches="tight")
 
 
-def table_rv_dep(outpath, waves, table_waves, slopes, intercepts, stds, norm="V"):
+def table_rv_dep(outpath, table_waves, fit_slopes, fit_intercepts, fit_stds, norm="V"):
     """
-    Create a (aastex) table with the slopes, intercepts and standard deviations at wavelengths "table_waves"
+    Create tables with the slopes, intercepts and standard deviations at wavelengths "table_waves"
 
     Parameters
     ----------
     outpath : string
         Path to save the table
 
-    waves : np.ndarray
-        Numpy array with all wavelengths for which the slopes, intercepts and standard deviations are given
-
     table_waves : list
         List with wavelengths to be included in the table
 
-    slopes : np.ndarray
-        Numpy array with the slopes of the linear relationship
+    fit_slopes : tuple
+        The interpolated spline for the slopes
 
-    intercepts : np.ndarray
-        Numpy array with the intercepts of the linear relationship
+    fit_intercepts : astropy model
+        The fitted model for the intercepts
 
-    stds : np.ndarray
-        Numpy array with the standard deviations about the linear fit
+    fit_stds : tuple
+        The interpolated spline for the standard deviations
 
     norm : string [default="V"]
         Band or wavelength for the normalization
@@ -191,76 +188,50 @@ def table_rv_dep(outpath, waves, table_waves, slopes, intercepts, stds, norm="V"
         - in aaxtex format for the paper
         - in ascii format
     """
-    # create a table in the ascii format
-    table_asc = Table(
-        [waves, slopes, intercepts, stds],
-        names=("wavelength", "slope", "intercept", "std"),
+    # obtain the slopes, intercepts and standard deviations at the table wavelengths
+    table_slopes = interpolate.splev(table_waves, fit_slopes)
+    table_intercepts = fit_intercepts(table_waves)
+    table_stds = interpolate.splev(table_waves, fit_stds)
+
+    # create the table
+    table = Table(
+        [table_waves, table_slopes, table_intercepts, table_stds],
+        names=("wavelength [micron]", "slope", "intercept", "std"),
     )
-    table_asc.write(
+
+    # save it in ascii format
+    table.write(
         outpath + "RV_dep" + str(norm) + ".txt",
         format="ascii.commented_header",
         overwrite=True,
     )
 
-    # create a table in the aastex format
-    table_lat = Table(
-        names=(
-            r"$\lambda [\micron]$",
-            r"a($\lambda$)",
-            r"b($\lambda$)",
-            r"$\sigma(\lambda)$",
-            r"$\lambda 2[\micron]$",
-            r"a2($\lambda$)",
-            r"b2($\lambda$)",
-            r"$2\sigma(\lambda)$",
-        ),
-        dtype=("str", "str", "str", "str", "str", "str", "str", "str"),
-    )
-
-    # take out the wavelengths without measurements
-    mask = ~np.isnan(slopes)
-    waves = waves[mask]
-    slopes = slopes[mask]
-    intercepts = intercepts[mask]
-    stds = stds[mask]
-    half = int(len(table_waves) / 2)
-    indxs = []
-    for wave in table_waves:
-        indx = np.abs(waves - wave).argmin()
-        if np.abs(waves[indx] - wave) < 0.025:
-            indxs.append(indx)
-
-    half = int(len(indxs) / 2)
-    indxs1 = indxs[:half]
-    indxs2 = indxs[half:]
-
-    for ind1, ind2 in zip(indxs1, indxs2):
-        table_lat.add_row(
-            (
-                "{:.2f}".format(waves[ind1]),
-                "{:.3f}".format(slopes[ind1]),
-                "{:.3f}".format(intercepts[ind1]),
-                "{:.3f}".format(stds[ind1]),
-                "{:.2f}".format(waves[ind2]),
-                "{:.3f}".format(slopes[ind2]),
-                "{:.3f}".format(intercepts[ind2]),
-                "{:.3f}".format(stds[ind2]),
-            )
-        )
-
-    table_lat.write(
+    # save it in aastex format
+    table.write(
         outpath + "RV_dep" + str(norm) + ".tex",
         format="aastex",
+        names=(
+            r"$\lambda [\micron]$",
+            r"$b(\lambda$)",
+            r"$a(\lambda$)",
+            r"$\sigma(\lambda)$",
+        ),
+        formats={
+            r"$\lambda [\micron]$": "{:.2f}",
+            r"$b(\lambda$)": "{:.3f}",
+            r"$a(\lambda$)": "{:.3f}",
+            r"$\sigma(\lambda)$": "{:.3f}",
+        },
         latexdict={
-            "col_align": "cccc|cccc",
+            "col_align": "cccc",
             "tabletype": "deluxetable",
-            "caption": r"Parameters of the linear relationship between extinction A($\lambda$)/A(V) and R(V). For every wavelength, the intercept a, slope b, and standard deviation $\sigma$ are given. \label{tab:RV_dep}",
+            "caption": r"Parameters of the linear relationship between extinction A($\lambda$)/A(V) and R(V). For every wavelength, the slope $b$, intercept $a$, and standard deviation $\sigma$ are given. \label{tab:RV_dep}",
         },
         overwrite=True,
     )
 
 
-def fit_slopes_intercepts(slopes, intercepts, stds, waves):
+def fit_slopes_intercepts(slopes, intercepts, stds, waves, norm):
     """
     Fit the slopes, intercepts and standard deviations vs. wavelength
 
@@ -278,6 +249,8 @@ def fit_slopes_intercepts(slopes, intercepts, stds, waves):
     waves : np.ndarray
         Numpy array with all wavelengths
 
+    norm : string [default="V"]
+        Band or wavelength for the normalization
     Returns
     -------
     spline_wave : np.ndarray
@@ -332,6 +305,10 @@ def fit_slopes_intercepts(slopes, intercepts, stds, waves):
 
     # interpolate the standard deviations with a spline function
     fit_stds = interpolate.splrep(spline_wave, spline_std)
+
+    # create tables with the fitting results at certain wavelengths
+    table_waves = np.arange(0.8, 4.05, 0.05)
+    table_rv_dep(table_path, table_waves, fit_slopes, fit_intercepts, fit_stds, norm)
 
     return spline_wave, spline_slope, spline_std, fit_slopes, fit_intercepts, fit_stds
 
@@ -405,10 +382,6 @@ def fit_plot_rv_dep(inpath, plot_path, table_path, starpair_list, norm="V"):
         norm=norm,
     )
 
-    # provide a table with the results at certain wavelengths
-    table_waves = np.arange(0.8, 5.2, 0.05)
-    table_rv_dep(table_path, waves, table_waves, slopes, intercepts, stds, norm)
-
     # plot the slopes, intercepts and standard deviations vs. wavelength
     # color the data points at wavelengths > 4.03 grey
     fig, ax = plt.subplots(3, figsize=(9, 9), sharex=True)
@@ -432,7 +405,7 @@ def fit_plot_rv_dep(inpath, plot_path, table_path, starpair_list, norm="V"):
         fit_slopes,
         fit_intercepts,
         fit_stds,
-    ) = fit_slopes_intercepts(slopes, intercepts, stds, waves)
+    ) = fit_slopes_intercepts(slopes, intercepts, stds, waves, norm)
     slope_spline = interpolate.splev(waves[short_waves], fit_slopes)
     ax[0].scatter(spline_wave, spline_slope, color="r", marker="d", s=10)
     ax[0].plot(
@@ -470,8 +443,8 @@ def fit_plot_rv_dep(inpath, plot_path, table_path, starpair_list, norm="V"):
     ax[0].set_ylim(-0.01, 0.075)
     ax[1].set_ylim(-0.03, 0.6)
     ax[2].set_ylim(0.01, 0.075)
-    ax[0].set_ylabel("b")
-    ax[1].set_ylabel("a")
+    ax[0].set_ylabel(r"$b$")
+    ax[1].set_ylabel(r"$a$")
     ax[2].set_ylabel(r"$\sigma$")
     ax[0].axhline(ls="--", color="k", lw=1, alpha=0.6)
     ax[1].axhline(ls="--", color="k", lw=1, alpha=0.6)
