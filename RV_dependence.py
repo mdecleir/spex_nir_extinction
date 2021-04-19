@@ -8,8 +8,12 @@ from collections import Counter
 from scipy import stats, interpolate
 from astropy.modeling import models, fitting
 from astropy.table import Table
+from matplotlib.lines import Line2D
+
+import astropy.units as u
 
 from measure_extinction.extdata import ExtData
+from dust_extinction.parameter_averages import CCM89, F19
 
 
 def get_data(inpath, starpair_list, norm="V"):
@@ -251,6 +255,7 @@ def fit_slopes_intercepts(slopes, intercepts, stds, waves, norm):
 
     norm : string [default="V"]
         Band or wavelength for the normalization
+
     Returns
     -------
     spline_wave : np.ndarray
@@ -313,6 +318,79 @@ def fit_slopes_intercepts(slopes, intercepts, stds, waves, norm):
     return spline_wave, spline_slope, spline_std, fit_slopes, fit_intercepts, fit_stds
 
 
+def plot_RV_lit(outpath, fit_slopes, fit_intercepts):
+    """
+    Plot the R(V)-dependent extinction curve for different R(V) values, together with R(V)-dependent curves from the literature
+
+    Parameters
+    ----------
+    outpath : string
+        Path to save the plot
+
+    fit_slopes : tuple
+        The interpolated spline for the slopes
+
+    fit_intercepts : astropy model
+        The fitted model for the intercepts
+
+    Returns
+    -------
+    Plot with the R(V)-dependent extinction curve for different R(V) values
+    """
+    waves = np.arange(0.8, 4.01, 0.01)
+    fig, ax = plt.subplots(figsize=(10, 8))
+
+    for RV in [2.0, 3.1, 5.5]:
+        # plot the extinction curve from this work
+        slopes = interpolate.splev(waves, fit_slopes)
+        alav = fit_intercepts(waves) + slopes * (RV - 3.1)
+        (line,) = ax.plot(waves, alav, label="R(V) = " + str(RV))
+
+        # plot the literature curves
+        color = line.get_color()
+        styles = ["--", ":"]
+        for i, cmodel in enumerate([CCM89, F19]):
+            ext_model = cmodel(Rv=RV)
+            (indxs,) = np.where(
+                np.logical_and(
+                    1 / waves >= ext_model.x_range[0], 1 / waves <= ext_model.x_range[1]
+                )
+            )
+            yvals = ext_model(waves[indxs] * u.micron)
+            ax.plot(
+                waves[indxs],
+                yvals,
+                lw=1,
+                color=color,
+                ls=styles[i],
+                alpha=0.8,
+            )
+
+    # finalize and save the plot
+    ax.set_xlabel(r"$\lambda$ [$\mu m$]")
+    ax.set_ylabel(r"$A(\lambda)/A(V)$")
+    ax.set_xlim(0.75, 4.05)
+    ax.set_ylim(0.0, 0.7)
+    handles = [
+        Line2D([0], [0], color="tab:blue", lw=2),
+        Line2D([0], [0], color="tab:orange", lw=2),
+        Line2D([0], [0], color="tab:green", lw=2),
+        Line2D([0], [0], color="gray"),
+        Line2D([0], [0], color="gray", ls="--"),
+        Line2D([0], [0], color="gray", ls=":"),
+    ]
+    labels = [
+        "R(V) = 2.0",
+        "R(V) = 3.1",
+        "R(V) = 5.5",
+        "this work",
+        "Cardelli et al. (1989)",
+        "Fitzpatrick et al. (2019)",
+    ]
+    plt.legend(handles, labels)
+    plt.savefig(outpath + "RV_lit.pdf", bbox_inches="tight")
+
+
 def fit_plot_rv_dep(inpath, plot_path, table_path, starpair_list, norm="V"):
     """
     Fit and plot the relationship between A(lambda)/A(V) and R(V)
@@ -333,6 +411,10 @@ def fit_plot_rv_dep(inpath, plot_path, table_path, starpair_list, norm="V"):
 
     norm : string [default="V"]
         Band or wavelength for the normalization
+
+    Returns
+    -------
+    Several plots related to the R(V)-dependence
     """
     # collect the data to be fitted
     RVs, alavs, alav_uncs, waves = get_data(inpath, starpair_list, norm)
@@ -450,6 +532,11 @@ def fit_plot_rv_dep(inpath, plot_path, table_path, starpair_list, norm="V"):
     ax[1].axhline(ls="--", color="k", lw=1, alpha=0.6)
     plt.subplots_adjust(hspace=0)
     plt.savefig(plot_path + "RV_slope_inter" + str(norm) + ".pdf", bbox_inches="tight")
+
+    # compare R(V)-dependent extinction curves to literature curves
+    # only useful for extinction curves that are normalized to A(V)
+    if norm == "V":
+        plot_RV_lit(plot_path, fit_slopes, fit_intercepts)
 
 
 if __name__ == "__main__":
