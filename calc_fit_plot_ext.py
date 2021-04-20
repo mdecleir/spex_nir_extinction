@@ -6,7 +6,7 @@ from matplotlib.ticker import MaxNLocator
 
 from measure_extinction.extdata import ExtData, AverageExtData
 from measure_extinction.utils.calc_ext import calc_extinction, calc_ave_ext
-from measure_extinction.plotting.plot_ext import plot_multi_extinction, plot_extinction
+from measure_extinction.plotting.plot_ext import plot_extinction
 
 from fit_spex_ext import fit_spex_ext, fit_features
 
@@ -52,7 +52,7 @@ def calc_fit_average(starpair_list, path):
     Calculates, saves and fits the average extinction curve (output: path/average_ext.fits)
     """
     # calculate the average extinction curve
-    calc_ave_ext(starpair_list, path, min_number=3)
+    calc_ave_ext(starpair_list, path, min_number=5)
 
     # fit the average extinction curve
     fit_spex_ext("average", path)
@@ -318,6 +318,7 @@ if __name__ == "__main__":
         # "HD283809_HD003360", # dense
         "HD294264_HD034759",
     ]
+
     calc_fit_average(diffuse, path)
 
     # create more plots
@@ -335,36 +336,7 @@ if __name__ == "__main__":
     # fit features for HD283809 separately
     # fit_plot_features("HD283809_HD003360")
 
-    # parser.add_argument(
-    #     "--average", help="plot the average extinction curve", action="store_true"
-    # )
-    # parser.add_argument(
-    #     "--extmodels", help="plot extinction curve models", action="store_true"
-    # )
-    # parser.add_argument(
-    #     "--powerlaw", help="plot NIR powerlaw model", action="store_true"
-    # )
-    # parser.add_argument("--HI_lines", help="indicate the HI-lines", action="store_true")
-    # parser.add_argument(
-    #     "--onefig",
-    #     help="whether or not to plot all curves in the same figure",
-    #     action="store_true",
-    # )
-    # parser.add_argument(
-    #     "--range",
-    #     nargs="+",
-    #     help="wavelength range to be plotted (in micron)",
-    #     type=float,
-    #     default=None,
-    # )
 
-#
-# from measure_extinction.plotting.plot_ext import (
-#     plot_multi_extinction,
-#     plot_extinction,
-#     plot_average,
-# )
-#
 # def plot_extinction_curves():
 #     starpair_list = [
 #         "HD017505_HD214680",
@@ -393,14 +365,12 @@ if __name__ == "__main__":
 #         "HD283809_HD003360",
 #         "HD294264_HD031726",  # this
 #     ]
-#
-#
 
 #
 #     # calculate RV
 #     # average.columns["RV"] = 1 / (average.exts["BAND"][1] - 1)
 #
-#
+
 # def plot_fit():
 #
 #     # plot_extinction_curves()
