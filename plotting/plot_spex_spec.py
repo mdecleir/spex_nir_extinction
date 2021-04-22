@@ -1,6 +1,8 @@
 #!/usr/bin/env python
 # This script creates plots with all SpeX spectra for the NIR extinction paper (Decleir et al. 2021).
 
+from matplotlib import pyplot as plt
+
 from measure_extinction.plotting.plot_spec import plot_multi_spectra
 
 
@@ -64,19 +66,21 @@ def plot_comp_spectra(inpath, outpath):
         "main sequence",
         xy=(5.37, 3.7),
         xytext=(5.5, 3.7),
+        fontsize=fs,
         ha="center",
         va="center",
         rotation=-90,
-        arrowprops=dict(arrowstyle="-[, widthB=17, lengthB=1.8", lw=3),
+        arrowprops=dict(arrowstyle="-[, widthB=15, lengthB=1.8", lw=3),
     )
     ax.annotate(
         "giants and supergiants",
-        xy=(5.37, 8.6),
-        xytext=(5.5, 8.6),
+        xy=(5.37, 8.7),
+        xytext=(5.5, 8.7),
+        fontsize=fs,
         ha="center",
         va="center",
         rotation=-90,
-        arrowprops=dict(arrowstyle="-[, widthB=9, lengthB=1.8", lw=3),
+        arrowprops=dict(arrowstyle="-[, widthB=8, lengthB=1.8", lw=3),
     )
 
     fig.savefig(outpath + "comp_stars.pdf", bbox_inches="tight")
@@ -88,7 +92,6 @@ def plot_red_spectra(inpath, outpath):
         "HD156247",
         "HD185418",
         "HD013338",
-        "HD014250",
         "HD017505",
         "BD+56d524",
         "HD192660",
@@ -110,7 +113,6 @@ def plot_red_spectra(inpath, outpath):
         0.11,
         0.22,
         0.21,
-        0.2,
         0.17,
         0.22,
         0.2,
@@ -126,7 +128,7 @@ def plot_red_spectra(inpath, outpath):
         0.27,
         0.25,
     ]
-    angles = [15, 17, 19, 9, 15, 25, 33, 34, 32, 34, 26, 32, 42, 40, 46, 48, 52, 62]
+    angles = [15, 17, 19, 15, 25, 33, 34, 32, 34, 26, 32, 42, 40, 46, 48, 52, 62]
 
     # plot the spectra
     fig, ax = plot_multi_spectra(
@@ -143,13 +145,14 @@ def plot_red_spectra(inpath, outpath):
         pdf=True,
         outname="red_stars.pdf",
     )
-    ax.set_ylim(0.6, 18)
+    ax.set_ylim(0.6, 17.2)
     fig.savefig(outpath + "red_stars.pdf", bbox_inches="tight")
 
 
 def plot_unused_spectra(inpath, outpath):
     # define the names of the reddened stars that cannot be used to measure an extinction curve (sorted by steepness)
     stars = [
+        "HD014250",
         "HD037022",
         "HD052721",
         "HD037023",
@@ -159,16 +162,8 @@ def plot_unused_spectra(inpath, outpath):
         "HD014422",
     ]
     # specify the offsets and angles for the star names
-    offsets = [
-        0.15,
-        0.05,
-        0.21,
-        0.12,
-        -0.1,
-        0.16,
-        0.18,
-    ]
-    angles = [14, 17, 17, 18, 22, 26, 32]
+    offsets = [0.15, 0.17, 0.05, 0.21, 0.12, -0.1, 0.16, 0.19]
+    angles = [8, 15, 18, 18, 19, 23, 28, 33]
     fig, ax = plot_multi_spectra(
         stars,
         inpath,
@@ -182,13 +177,21 @@ def plot_unused_spectra(inpath, outpath):
         pdf=True,
         outname="bad_stars.pdf",
     )
-    ax.set_ylim(0.6, 11)
+    ax.set_ylim(0.6, 11.3)
     fig.savefig(outpath + "bad_stars.pdf", bbox_inches="tight")
 
 
 if __name__ == "__main__":
     inpath = "/Users/mdecleir/Documents/NIR_ext/Data/"
     outpath = "/Users/mdecleir/spex_nir_extinction/Figures/"
+    # plotting settings for uniform plots
+    fs = 20
+    plt.rc("font", size=fs)
+    plt.rc("xtick", top=True, direction="in", labelsize=fs)
+    plt.rc("ytick", direction="in", labelsize=fs)
+    plt.rc("xtick.major", width=1, size=8)
+    plt.rc("ytick.major", width=1, size=8)
+
     plot_comp_spectra(inpath, outpath)
     plot_red_spectra(inpath, outpath)
     plot_unused_spectra(inpath, outpath)

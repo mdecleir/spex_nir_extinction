@@ -6,6 +6,7 @@ import astropy.units as u
 
 from astropy.modeling.powerlaws import PowerLaw1D
 from astropy.table import Table
+from matplotlib import pyplot as plt
 
 from measure_extinction.plotting.plot_ext import (
     plot_multi_extinction,
@@ -76,7 +77,6 @@ def plot_extinction_curves(inpath, outpath):
     offsets = [
         0,
         0.03,
-        0.03,
         0.01,
         0.04,
         0.01,
@@ -96,7 +96,6 @@ def plot_extinction_curves(inpath, outpath):
     angles = [
         -38,
         -44,
-        -10,
         -32,
         -30,
         -46,
@@ -257,5 +256,13 @@ if __name__ == "__main__":
     outpath = "/Users/mdecleir/spex_nir_extinction/Figures/"
     table_path = "/Users/mdecleir/spex_nir_extinction/Tables/"
 
-    # plot_extinction_curves(inpath, outpath)
+    # plotting settings for uniform plots
+    fs = 20
+    plt.rc("font", size=fs)
+    plt.rc("xtick", top=True, direction="in", labelsize=fs)
+    plt.rc("ytick", direction="in", labelsize=fs)
+    plt.rc("xtick.major", width=1, size=8)
+    plt.rc("ytick.major", width=1, size=8)
+
+    plot_extinction_curves(inpath, outpath)
     plot_average_curve(inpath, table_path, outpath)
