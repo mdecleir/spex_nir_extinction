@@ -8,11 +8,29 @@ from measure_extinction.extdata import ExtData, AverageExtData
 from measure_extinction.utils.calc_ext import calc_extinction, calc_ave_ext
 from measure_extinction.plotting.plot_ext import plot_extinction
 
-from fit_spex_ext import fit_spex_ext, fit_features
+from fit_spex_ext import fit_spex_ext, fit_features_ext, fit_features_spec
 
 
 # function to calculate, fit and plot all extinction curves
-def calc_fit_plot(starpair_list, path):
+def calc_fit_plot(starpair_list, path, dense=False):
+    """
+    Calculate, fit and plot the extinction curve for all star pairs in "starpair_list"
+
+    Parameters
+    ----------
+    starpair_list : list of strings
+        List of star pairs for which to calculate, fit and plot the extinction curve, in the format "reddenedstarname_comparisonstarname" (no spaces)
+
+    path : string
+        Path to the data files
+
+    dense : boolean [default=False]
+        Whether or not the sightline is dense
+
+    Returns
+    -------
+    Calculates, saves, fits and plots the extinction curve
+    """
     for starpair in starpair_list:
         redstar = starpair.split("_")[0]
         compstar = starpair.split("_")[1]
@@ -22,7 +40,7 @@ def calc_fit_plot(starpair_list, path):
         calc_extinction(redstar, compstar, path)
 
         # fit the extinction curve
-        fit_spex_ext(starpair, path, ice=False)
+        fit_spex_ext(starpair, path, dense=dense)
 
         # plot the extinction curve
         plot_extinction(
@@ -55,24 +73,128 @@ def calc_fit_average(starpair_list, path):
     calc_ave_ext(starpair_list, path, min_number=5)
 
     # fit the average extinction curve
-    fit_spex_ext("average", path)
+    fit_spex_ext("average", path, exclude=(4.1, 6))
 
 
-def fit_plot_features(starpair):
+def fit_plot_features_spectrum(star, path):
     """
-    Fit and plot the features separately with different profiles
+    Fit and plot the features directly from the spectrum
+
+    Parameters
+    ----------
+    star : string
+        Name of the reddened star for which to fit the features in the spectrum
+
+    path : string
+        Path to the data files
+
+    Returns
+    -------
+    Plot with the continuum-subtracted spectrum and the fitted models
+    """
+    # fit the features
+    waves, fluxes, results = fit_features_spec(star, path)
+
+    # plot the data
+    fig, ax = plt.subplots(
+        2, 1, figsize=(8, 6), sharex=True, gridspec_kw={"height_ratios": [6, 1]}
+    )
+    ax[0].plot(waves, fluxes, color="k", lw=0.5, alpha=0.7)
+
+    # plot the fitted models
+    # Gaussians
+    ax[0].plot(
+        waves,
+        results[0](waves),
+        lw=2,
+        label="2 Gaussians",
+    )
+
+    # Asymmetric Gaussians (with the two individual profiles)
+    ax[0].plot(
+        waves,
+        results[3](waves),
+        lw=2,
+        label="2 mod. Gaussians",
+    )
+    ax[0].plot(waves, results[3][0](waves), color="C1", lw=1, ls="--")
+    ax[0].plot(waves, results[3][1](waves), color="C1", lw=1, ls="--")
+
+    # Drudes
+    ax[0].plot(
+        waves,
+        results[1](waves),
+        ls="--",
+        lw=1,
+        label="2 Drudes",
+    )
+
+    # Asymmetric Drudes
+    ax[0].plot(
+        waves,
+        results[4](waves),
+        ls="--",
+        lw=1,
+        label="2 mod. Drudes",
+    )
+
+    # Lorentzians
+    ax[0].plot(
+        waves,
+        results[2](waves),
+        ls=":",
+        lw=1,
+        label="2 Lorentzians",
+    )
+
+    # Asymmetric Lorentzians
+    ax[0].plot(
+        waves,
+        results[5](waves),
+        ls=":",
+        lw=1,
+        label="2 mod. Lorentzians",
+    )
+
+    # finish the upper plot
+    ax[0].set_ylabel("flux")
+    ax[0].set_ylim(-0.4e-12, 0.05e-12)
+    ax[0].axhline(color="k", ls=":")
+    ax[0].yaxis.set_major_locator(MaxNLocator(prune="lower"))
+    ax[0].legend(fontsize=fs * 0.6)
+
+    # plot the residuals (for the best fitting model)
+    ax[1].scatter(waves, results[3](waves) - fluxes, s=0.7, color="C1")
+    ax[1].axhline(ls="--", c="k", alpha=0.5)
+    ax[1].set_ylabel("residual")
+
+    # finish and save the plot
+    plt.xlabel(r"$\lambda$ [$\mu m$]")
+    plt.subplots_adjust(hspace=0)
+    plt.savefig(
+        "/Users/mdecleir/spex_nir_extinction/Figures/" + star + "_spec_features.pdf",
+        bbox_inches="tight",
+    )
+
+
+def fit_plot_features_ext(starpair, path):
+    """
+    Fit and plot the extinction features separately
 
     Parameters
     ----------
     starpair : string
         Name of the star pair for which to fit the extinction features, in the format "reddenedstarname_comparisonstarname" (no spaces)
 
+    path : string
+        Path to the data files
+
     Returns
     -------
-    Plot with the continuum-subtracted extinction data and the fitted models
+    Plot with the continuum-subtracted extinction and the fitted models
     """
     # fit the features
-    waves, exts, results = fit_features(starpair, path)
+    waves, exts, results = fit_features_ext(starpair, path)
 
     # plot the data
     fig, ax = plt.subplots(
@@ -81,16 +203,13 @@ def fit_plot_features(starpair):
     ax[0].plot(waves, exts, color="k", lw=0.5, alpha=0.7)
 
     # plot the fitted models
-    # Gaussians (with the two individual profiles)
+    # Gaussians
     ax[0].plot(
         waves,
         results[0](waves),
         lw=2,
         label="2 Gaussians",
     )
-
-    # ax[0].plot(waves, results[0][0](waves), color="#1f77b4", lw=1, ls="--")
-    # ax[0].plot(waves, results[0][1](waves), color="#1f77b4", lw=1, ls="--")
 
     # Asymmetric Gaussians (with the two individual profiles)
     ax[0].plot(
@@ -155,7 +274,10 @@ def fit_plot_features(starpair):
     # finish and save the plot
     plt.xlabel(r"$\lambda$ [$\mu m$]")
     plt.subplots_adjust(hspace=0)
-    plt.savefig("Figures/features.pdf", bbox_inches="tight")
+    plt.savefig(
+        "/Users/mdecleir/spex_nir_extinction/Figures/" + starpair + "_features.pdf",
+        bbox_inches="tight",
+    )
 
 
 # def plot_lab_ice():
@@ -279,18 +401,15 @@ if __name__ == "__main__":
     # define the path of the data files
     path = "/Users/mdecleir/Documents/NIR_ext/Data/"
 
-    # read the list of all star pairs
-    table = pd.read_table("red-comp.list", comment="#")
-    redstars = table["reddened"]
-    compstars = table["comparison"]
-    starpair_list = []
-    for redstar, compstar in zip(redstars, compstars):
-        starpair_list.append(redstar + "_" + compstar)
+    # # read the list of all star pairs
+    # table = pd.read_table("red-comp.list", comment="#")
+    # redstars = table["reddened"]
+    # compstars = table["comparison"]
+    # starpair_list = []
+    # for redstar, compstar in zip(redstars, compstars):
+    #     starpair_list.append(redstar + "_" + compstar)
 
-    # calculate, fit and plot all extinction curves
-    calc_fit_plot(starpair_list, path)
-
-    # calculate and fit the average diffuse extinction curve
+    # define the diffuse and dense sub-samples
     diffuse = [
         "BD+56d524_HD034816",
         "HD013338_HD031726",
@@ -299,7 +418,6 @@ if __name__ == "__main__":
         "HD014956_HD188209",
         "HD017505_HD214680",
         "HD029309_HD042560",
-        # "HD029647_HD042560", # dense
         # "HD034921_HD214680",
         # "HD037020_HD034816",
         # "HD037022_HD034816",
@@ -315,11 +433,19 @@ if __name__ == "__main__":
         "HD204827_HD204172",
         # "HD206773_HD003360",
         "HD229238_HD214680",
-        # "HD283809_HD003360", # dense
         "HD294264_HD034759",
     ]
+    dense = ["HD029647_HD042560", "HD283809_HD003360"]
+    dense = ["HD283809_HD003360"]
 
-    calc_fit_average(diffuse, path)
+    # calculate and fit the average diffuse extinction curve
+    # calc_fit_average(diffuse, path)
+
+    # calculate, fit and plot all diffuse extinction curves
+    # calc_fit_plot(diffuse, path)
+
+    # calculate, fit and plot all dense extinction curves
+    # calc_fit_plot(dense, path, dense=True)
 
     # create more plots
     fs = 18
@@ -333,81 +459,10 @@ if __name__ == "__main__":
     # plot all residuals in one figure
     # plot_residuals(starpair_list)
 
-    # fit features for HD283809 separately
-    # fit_plot_features("HD283809_HD003360")
+    # ------------------------------------------------------------------
+    # EXTRA (eventually not used in the paper)
+    # fit features from the spectrum instead of the extinction curve
+    # fit_plot_features_spectrum("HD283809", path)
 
-
-# def plot_extinction_curves():
-#     starpair_list = [
-#         "HD017505_HD214680",
-#         "BD+56d524_HD051283",
-#         "HD013338_HD031726",
-#         ## "HD014250_HD032630",
-#         ## "HD014422_HD214680",
-#         "HD014956_HD188209",
-#         "HD029309_HD051283",
-#         "HD029647_HD078316",
-#         ## "HD034921_HD214680",
-#         ## "HD037020_HD034816",
-#         ## "HD037022_HD214680",
-#         "HD037023_HD036512",
-#         "HD037061_HD034816",  # this
-#         "HD038087_HD003360",  # this
-#         ## "HD052721_HD036512",
-#         ## "HD156247_HD032630",
-#         "HD166734_HD036512",
-#         "HD183143_HD188209",
-#         "HD185418_HD034816",
-#         "HD192660_HD091316",
-#         "HD204827_HD204172",
-#         ## "HD206773_HD047839",
-#         "HD229238_HD091316",
-#         "HD283809_HD003360",
-#         "HD294264_HD031726",  # this
-#     ]
-
-#
-#     # calculate RV
-#     # average.columns["RV"] = 1 / (average.exts["BAND"][1] - 1)
-#
-
-# def plot_fit():
-#
-#     # plot_extinction_curves()
-#     plot_fit()
-#     #
-#     # if args.onefig:  # plot all curves in the same figure
-#     #     plot_multi_extinction(
-#     #         starpair_list,
-#     #         args.path,
-#     #         args.alax,
-#     #         args.average,
-#     #         args.extmodels,
-#     #         args.powerlaw,
-#     #         args.HI_lines,
-#     #         args.range,
-#     #         args.spread,
-#     #         args.exclude,
-#     #         pdf=True,
-#     #     )
-#     # else:  # plot all curves separately
-#     #     if args.spread:
-#     #         parser.error(
-#     #             "The flag --spread can only be used in combination with the flag --onefig. It only makes sense to spread out the curves if there is more than one curve in the same plot."
-#     #         )
-#     #     if args.average:
-#     #         parser.error(
-#     #             "The flag --average can only be used in combination with the flag --onefig. It only makes sense to add the average extinction curve to a plot with multiple curves."
-#     #         )
-#     #     for redstar, compstar in zip(redstars, compstars):
-#     #         plot_extinction(
-#     #             redstar + "_" + compstar,
-#     #             args.path,
-#     #             args.alax,
-#     #             args.extmodels,
-#     #             args.powerlaw,
-#     #             args.HI_lines,
-#     #             args.range,
-#     #             args.exclude,
-#     #             pdf=True,
-#     #         )
+    # fit features from the continuum-subtracted extinction curve
+    # fit_plot_features_ext("HD283809_HD003360", path)
