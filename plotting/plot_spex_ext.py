@@ -9,11 +9,23 @@ from astropy.table import Table
 from matplotlib import pyplot as plt
 
 from measure_extinction.plotting.plot_ext import (
+    plot_extinction,
     plot_multi_extinction,
     plot_average,
 )
+from measure_extinction.extdata import ExtData
 
-from dust_extinction.averages import RL85_MWGC, G21_MWAvg
+from dust_extinction.averages import RL85_MWGC, I05_MWAvg, G21_MWAvg
+
+
+# asymmetric Gaussian
+def gauss_asymmetric(x, scale=1, x_o=1, gamma_o=1, asym=1):
+    gamma = 2.0 * gamma_o / (1.0 + np.exp(asym * (x - x_o)))
+    # gamma is FWHM, so stddev=gamma/(2sqrt(2ln2))
+    y = scale * np.exp(
+        -((x - x_o) ** 2) / (2 * (gamma / (2 * np.sqrt(2 * np.log(2)))) ** 2)
+    )
+    return y
 
 
 def plot_extinction_curves(inpath, outpath):
@@ -125,7 +137,7 @@ def plot_extinction_curves(inpath, outpath):
         text_angles=angles,
         pdf=True,
     )
-    ax.set_ylim(-0.1, 5.1)
+    ax.set_ylim(-0.1, 4.8)
     fig.savefig(outpath + "ext_curves_alav.pdf", bbox_inches="tight")
 
 
@@ -156,6 +168,16 @@ def plot_average_curve(inpath, table_path, outpath):
         pdf=True,
     )
 
+    # plot part beyond 4 micron in gray
+    x = ax.get_lines()[3].get_data()[0]
+    y = ax.get_lines()[3].get_data()[1]
+    mask = x > 4.1
+    ax.plot(
+        x[mask],
+        y[mask],
+        color="silver",
+    )
+
     # add literature curves
     waves = np.arange(0.75, 5.2, 0.01)
 
@@ -175,7 +197,7 @@ def plot_average_curve(inpath, table_path, outpath):
         lw=1.7,
         ls="-.",
         alpha=0.8,
-        label="Martin & Whittet 1990",
+        label="Martin & Whittet (1990)",
     )
 
     # Rieke&Lebofsky 1985 data points, not needed because dust_extinction model for this paper is plotted
@@ -210,10 +232,14 @@ def plot_average_curve(inpath, table_path, outpath):
     # average curves from dust_extinction package
     x = np.arange(0.75, 5.2, 0.01) * u.micron
 
-    models = [RL85_MWGC, G21_MWAvg]
-    styles = ["--", ":"]
-    colors = ["tab:green", "tab:purple"]
-    labels = ["Rieke & Lebofsky 1985", "Gordon et al. 2021"]
+    models = [RL85_MWGC, I05_MWAvg, G21_MWAvg]
+    styles = ["--", "-.", ":"]
+    colors = ["tab:green", "tab:purple", "tab:cyan"]
+    labels = [
+        "Rieke & Lebofsky (1985)",
+        "Indebetouw et al. (2005)",
+        "Gordon et al. (2021)",
+    ]
     for i, cmodel in enumerate(models):
         ext_model = cmodel()
         (indxs,) = np.where(
@@ -232,10 +258,6 @@ def plot_average_curve(inpath, table_path, outpath):
             alpha=0.8,
         )
 
-    # add R(V)-dependent average curves for R(V)=3.1
-    RV_dep = Table.read(table_path + "RV_depV.txt", format="ascii")
-    # ax.plot(RV_dep["wavelength"], RV_dep["intercept"])
-
     # zoom the residual plot
     res_ax = fig.axes[1]
     res_ax.set_ylim(-0.025, 0.025)
@@ -244,11 +266,93 @@ def plot_average_curve(inpath, table_path, outpath):
     ax.set_ylim(-0.05, 0.6)
     handles, labels = ax.get_legend_handles_labels()
     ax.legend(
-        [handles[i] for i in [0, 2, 1, 3]],
-        [labels[i] for i in [0, 2, 1, 3]],
+        [handles[i] for i in [0, 2, 1, 3, 4]],
+        [labels[i] for i in [0, 2, 1, 3, 4]],
         fontsize=18,
     )
     fig.savefig(outpath + "average_ext.pdf", bbox_inches="tight")
+
+
+def plot_features(starpair, inpath, outpath):
+    """
+    Plot the extinction features separately
+
+    Parameters
+    ----------
+    starpair : string
+        Name of the star pair for which to plot the extinction features, in the format "reddenedstarname_comparisonstarname" (no spaces)
+
+    inpath : string
+        Path to the data files
+
+    outpath : string
+        Path to save the plot
+
+    Returns
+    -------
+    Plot with extinction features
+    """
+    # plot the measured extinction curve with the fitted model
+    fig, ax = plot_extinction(
+        starpair,
+        inpath,
+        fitmodel=True,
+        range=[2.4, 4.05],
+        exclude=["IRS", "BAND"],
+        pdf=True,
+    )
+
+    # plot the model components
+    extdata = ExtData("%s%s_ext.fits" % (inpath, starpair.lower()))
+
+    # plot the power law
+    print(extdata.model["params"])
+    ax.plot(
+        extdata.model["waves"],
+        extdata.model["params"][0]
+        * extdata.model["params"][11]
+        * extdata.model["waves"] ** (-extdata.model["params"][2])
+        - extdata.model["params"][11],
+        ls="--",
+        color="olive",
+        alpha=0.6,
+        label="power law",
+    )
+
+    # plot the first feature
+    ax.plot(
+        extdata.model["waves"],
+        extdata.model["params"][0]
+        * extdata.model["params"][11]
+        * extdata.model["waves"] ** (-extdata.model["params"][2])
+        - extdata.model["params"][11]
+        + gauss_asymmetric(
+            extdata.model["waves"],
+            scale=0.02899752 * extdata.model["params"][11],
+            x_o=3.01521119,
+            gamma_o=-0.33911005,
+            asym=-3.39222967,
+        ),
+    )
+
+    # plot the second feature
+    ax.plot(
+        extdata.model["waves"],
+        extdata.model["params"][0]
+        * extdata.model["params"][11]
+        * extdata.model["waves"] ** (-extdata.model["params"][2])
+        - extdata.model["params"][11]
+        + gauss_asymmetric(
+            extdata.model["waves"],
+            scale=0.00916217 * extdata.model["params"][11],
+            x_o=3.44983493,
+            gamma_o=-1.29219461,
+            asym=-23.53014118,
+        ),
+    )
+
+    # save the figure
+    fig.savefig(outpath + starpair + "_ext_features.pdf", bbox_inches="tight")
 
 
 if __name__ == "__main__":
@@ -264,5 +368,6 @@ if __name__ == "__main__":
     plt.rc("xtick.major", width=1, size=8)
     plt.rc("ytick.major", width=1, size=8)
 
-    plot_extinction_curves(inpath, outpath)
-    plot_average_curve(inpath, table_path, outpath)
+    # plot_extinction_curves(inpath, outpath)
+    # plot_average_curve(inpath, table_path, outpath)
+    plot_features("HD283809_HD003360", inpath, outpath)
