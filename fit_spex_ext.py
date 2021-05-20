@@ -60,7 +60,7 @@ def lorentz_asymmetric(x, scale=1, x_o=1, gamma_o=1, asym=1):
     return y
 
 
-def fit_function(dattype="elx", functype="pow", dense=False):
+def fit_function(dattype="elx", functype="pow", dense=False, profile="gauss_asym"):
     """
     Define the fitting function
 
@@ -75,6 +75,8 @@ def fit_function(dattype="elx", functype="pow", dense=False):
     dense : boolean [default=False]
         Whether or not to fit the features around 3 and 3.4 micron
 
+    profile : string [default="gauss_asym"]
+        Profile to use for the features if dense = True (options are "gauss", "drude", "lorentz", "gauss_asym", "drude_asym", "lorentz_asym")
 
     Returns
     -------
@@ -121,35 +123,62 @@ def fit_function(dattype="elx", functype="pow", dense=False):
 
         # define different profiles
         # 2 Gaussians (stddev=FWHM/(2sqrt(2ln2)))
-        gauss = Gaussian1D(mean=3, stddev=0.13) + Gaussian1D(mean=3.4, stddev=0.17)
+        gauss = Gaussian1D(
+            mean=3, stddev=0.13, bounds={"stddev": (0.12, 0.16)}
+        ) + Gaussian1D(
+            mean=3.4, stddev=0.14, bounds={"mean": (3.41, 3.45), "stddev": (0.14, 0.2)}
+        )
 
         # 2 Drudes
-        drude = Drude1D(x_0=3, fwhm=0.3) + Drude1D(x_0=3.4, fwhm=0.4)
+        drude = Drude1D(x_0=3, fwhm=0.3) + Drude1D(
+            x_0=3.4, fwhm=0.15, bounds={"x_0": (3.35, 3.43), "fwhm": (0.14, 0.3)}
+        )
 
         # 2 Lorentzians
-        lorentz = Lorentz1D(x_0=3, fwhm=0.3) + Lorentz1D(x_0=3.4, fwhm=0.4)
+        lorentz = Lorentz1D(
+            x_0=3, fwhm=0.3, bounds={"x_0": (2.99, 3.1), "fwhm": (0.28, 0.4)}
+        ) + Lorentz1D(
+            x_0=3.4, fwhm=0.15, bounds={"x_0": (3.35, 3.43), "fwhm": (0.14, 0.3)}
+        )
 
         # 2 asymmetric Gaussians
         Gaussian_asym = custom_model(gauss_asymmetric)
-        gauss_asym = Gaussian_asym(x_o=3, gamma_o=0.3) + Gaussian_asym(
-            x_o=3.4, gamma_o=0.4, bounds={"x_o": (3.35, 3.45)}
+        gauss_asym = Gaussian_asym(
+            x_o=3,
+            gamma_o=0.3,
+            bounds={"x_o": (2.99, 3.04), "gamma_o": (0.28, 0.5), "asym": (-10, 10)},
+        ) + Gaussian_asym(
+            x_o=3.4,
+            gamma_o=0.15,
+            bounds={
+                "x_o": (3.3, 3.42),
+                "scale": (0.005, None),
+                "gamma_o": (0.15, 0.5),
+                "asym": (-20, -4),
+            },
         )
 
         # 2 "asymmetric" Drudes
         Drude_asym = custom_model(drude_asymmetric)
         drude_asym = Drude_asym(x_o=3, gamma_o=0.3) + Drude_asym(
-            x_o=3.4, gamma_o=0.4, bounds={"x_o": (3.35, 3.45)}
+            x_o=3.4, gamma_o=0.15, bounds={"x_o": (3.35, 3.45)}
         )
 
         # 2 asymmetric Lorentzians
         Lorentzian_asym = custom_model(lorentz_asymmetric)
         lorentz_asym = Lorentzian_asym(x_o=3, gamma_o=0.3) + Lorentzian_asym(
-            x_o=3.4, gamma_o=0.4
+            x_o=3.4, gamma_o=0.15
         )
 
-        # profiles = [gauss, drude, lorentz, gauss_asym, drude_asym, lorentz_asym]
-
-        func += gauss_asym
+        profiles = {
+            "gauss": gauss,
+            "drude": drude,
+            "lorentz": lorentz,
+            "gauss_asym": gauss_asym,
+            "drude_asym": drude_asym,
+            "lorentz_asym": lorentz_asym,
+        }
+        func += profiles[profile]
 
         # func += Gaussian_asym(x_o=3, gamma_o=0.3) + Gaussian_asym(x_o=3.4, gamma_o=0.4)
 
@@ -223,33 +252,33 @@ def fit_features_spec(star, path):
     # define different profiles
     # 2 Gaussians (stddev=FWHM/(2sqrt(2ln2)))
     gauss = Gaussian1D(mean=3, stddev=0.13) + Gaussian1D(
-        mean=3.4, stddev=0.17, fixed={"mean": True}
+        mean=3.4, stddev=0.06, fixed={"mean": True}
     )
 
     # 2 Drudes
-    drude = Drude1D(x_0=3, fwhm=0.3) + Drude1D(x_0=3.4, fwhm=0.4, fixed={"x_0": True})
+    drude = Drude1D(x_0=3, fwhm=0.3) + Drude1D(x_0=3.4, fwhm=0.15, fixed={"x_0": True})
 
     # 2 Lorentzians
     lorentz = Lorentz1D(x_0=3, fwhm=0.3) + Lorentz1D(
-        x_0=3.4, fwhm=0.4, fixed={"x_0": True}
+        x_0=3.4, fwhm=0.15, fixed={"x_0": True}
     )
 
     # 2 asymmetric Gaussians
     Gaussian_asym = custom_model(gauss_asymmetric)
     gauss_asym = Gaussian_asym(x_o=3, gamma_o=0.3) + Gaussian_asym(
-        x_o=3.4, gamma_o=0.4, fixed={"x_o": True}
+        x_o=3.4, gamma_o=0.15, fixed={"x_o": True}
     )
 
     # 2 "asymmetric" Drudes
     Drude_asym = custom_model(drude_asymmetric)
     drude_asym = Drude_asym(x_o=3, gamma_o=0.3) + Drude_asym(
-        x_o=3.4, gamma_o=0.4, fixed={"x_o": True}
+        x_o=3.4, gamma_o=0.15, fixed={"x_o": True}
     )
 
     # 2 asymmetric Lorentzians
     Lorentzian_asym = custom_model(lorentz_asymmetric)
     lorentz_asym = Lorentzian_asym(x_o=3, gamma_o=0.3) + Lorentzian_asym(
-        x_o=3.4, gamma_o=0.4, fixed={"x_o": True}
+        x_o=3.4, gamma_o=0.15, fixed={"x_o": True}
     )
 
     profiles = [gauss, drude, lorentz, gauss_asym, drude_asym, lorentz_asym]
@@ -315,30 +344,28 @@ def fit_features_ext(starpair, path):
 
     # define different profiles
     # 2 Gaussians (stddev=FWHM/(2sqrt(2ln2)))
-    gauss = Gaussian1D(mean=3, stddev=0.13) + Gaussian1D(mean=3.4, stddev=0.17)
+    gauss = Gaussian1D(mean=3, stddev=0.13) + Gaussian1D(mean=3.4, stddev=0.06)
 
     # 2 Drudes
-    drude = Drude1D(x_0=3, fwhm=0.3) + Drude1D(x_0=3.4, fwhm=0.4)
+    drude = Drude1D(x_0=3, fwhm=0.3) + Drude1D(x_0=3.4, fwhm=0.15)
 
     # 2 Lorentzians
-    lorentz = Lorentz1D(x_0=3, fwhm=0.3) + Lorentz1D(x_0=3.4, fwhm=0.4)
+    lorentz = Lorentz1D(x_0=3, fwhm=0.3) + Lorentz1D(x_0=3.4, fwhm=0.15)
 
     # 2 asymmetric Gaussians
     Gaussian_asym = custom_model(gauss_asymmetric)
     gauss_asym = Gaussian_asym(x_o=3, gamma_o=0.3) + Gaussian_asym(
-        x_o=3.4, gamma_o=0.4, bounds={"x_o": (3.35, 3.45)}
+        x_o=3.4, gamma_o=0.15
     )
 
     # 2 "asymmetric" Drudes
     Drude_asym = custom_model(drude_asymmetric)
-    drude_asym = Drude_asym(x_o=3, gamma_o=0.3) + Drude_asym(
-        x_o=3.4, gamma_o=0.4, bounds={"x_o": (3.35, 3.45)}
-    )
+    drude_asym = Drude_asym(x_o=3, gamma_o=0.3) + Drude_asym(x_o=3.4, gamma_o=0.15)
 
     # 2 asymmetric Lorentzians
     Lorentzian_asym = custom_model(lorentz_asymmetric)
     lorentz_asym = Lorentzian_asym(x_o=3, gamma_o=0.3) + Lorentzian_asym(
-        x_o=3.4, gamma_o=0.4
+        x_o=3.4, gamma_o=0.15
     )
 
     profiles = [gauss, drude, lorentz, gauss_asym, drude_asym, lorentz_asym]
@@ -355,7 +382,9 @@ def fit_features_ext(starpair, path):
     return waves, exts_sub, results
 
 
-def fit_spex_ext(starpair, path, functype="pow", dense=False, exclude=None):
+def fit_spex_ext(
+    starpair, path, functype="pow", dense=False, profile="gauss_asym", exclude=None
+):
     """
     Fit the observed SpeX NIR extinction curve
 
@@ -373,9 +402,11 @@ def fit_spex_ext(starpair, path, functype="pow", dense=False, exclude=None):
     dense : boolean [default=False]
         Whether or not to fit the features around 3 and 3.4 micron
 
+    profile : string [default="gauss_asym"]
+        Profile to use for the features if dense = True (options are "gauss", "drude", "lorentz", "gauss_asym", "drude_asym", "lorentz_asym")
+
     exclude : tuple [default=None]
         Wavelength region (min,max) to be excluded from the fitting
-
 
     Returns
     -------
@@ -405,7 +436,9 @@ def fit_spex_ext(starpair, path, functype="pow", dense=False, exclude=None):
     # obtain the function to fit
     if "SpeX_LXD" not in extdata.waves.keys():
         dense = False
-    func = fit_function(dattype=extdata.type, functype=functype, dense=dense)
+    func = fit_function(
+        dattype=extdata.type, functype=functype, dense=dense, profile=profile
+    )
 
     # use the Levenberg-Marquardt algorithm to fit the data with the model
     fit = LevMarLSQFitter()
@@ -436,6 +469,7 @@ def fit_spex_ext(starpair, path, functype="pow", dense=False, exclude=None):
     fit_result = fit_result_mcmc
     # fit_result = fit_result_lev
     print(fit_result)
+
     # determine the wavelengths at which to evaluate and save the fitted model curve: all SpeX wavelengths, sorted from short to long (to avoid problems with overlap between SXD and LXD), and shortest and longest wavelength should have data
     if "SpeX_LXD" not in extdata.waves.keys():
         full_waves = extdata.waves["SpeX_SXD"].value
@@ -462,7 +496,7 @@ def fit_spex_ext(starpair, path, functype="pow", dense=False, exclude=None):
 
     # save the fitting results to the fits file
     if dense:
-        functype += "_features"
+        functype += "_" + profile
     extdata.model["type"] = functype + "_" + extdata.type
     extdata.model["waves"] = full_waves
     extdata.model["exts"] = fit_result(full_waves)
