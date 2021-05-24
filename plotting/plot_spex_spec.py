@@ -54,7 +54,7 @@ def plot_comp_spectra(inpath, outpath):
         range=[0.75, 5.6],
         norm_range=[0.95, 1.05],
         spread=True,
-        exclude=["IRS"],
+        exclude=["IRS", "I", "L", "IRAC1", "IRAC2", "WISE1", "WISE2"],
         text_offsets=offsets,
         text_angles=angles,
         pdf=True,
@@ -102,9 +102,9 @@ def plot_red_spectra(inpath, outpath):
         "HD037061",
         "HD294264",
         "HD229238",
-        "HD166734",
         "HD029647",
         "HD183143",
+        "HD166734",
         "HD283809",
     ]
 
@@ -138,14 +138,14 @@ def plot_red_spectra(inpath, outpath):
         range=[0.75, 5.5],
         norm_range=[0.95, 1.05],
         spread=True,
-        exclude=["IRS", "STIS_Opt"],
+        exclude=["IRS", "STIS_Opt", "I", "L", "IRAC1", "IRAC2", "WISE1", "WISE2"],
         text_offsets=offsets,
         text_angles=angles,
         class_offset=False,
         pdf=True,
         outname="red_stars.pdf",
     )
-    ax.set_ylim(0.6, 17.2)
+    ax.set_ylim(0.6, 16.9)
     fig.savefig(outpath + "red_stars.pdf", bbox_inches="tight")
 
 
@@ -171,7 +171,7 @@ def plot_unused_spectra(inpath, outpath):
         range=[0.75, 5.4],
         norm_range=[0.95, 1.05],
         spread=True,
-        exclude=["IRS", "STIS_Opt"],
+        exclude=["IRS", "I", "L", "IRAC1", "IRAC2", "WISE1", "WISE2"],
         text_offsets=offsets,
         text_angles=angles,
         pdf=True,
