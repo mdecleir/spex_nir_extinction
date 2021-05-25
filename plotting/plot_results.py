@@ -252,7 +252,7 @@ def plot_param_triangle(inpath, outpath, starpair_list):
     plt.savefig(outpath + "params.pdf", bbox_inches="tight")
 
 
-def compare_AV_lit(ext_path, lit_path, starpair_list):
+def compare_AV_lit(ext_path, lit_path, plot_path, starpair_list):
     """
     Function to create a plot with the comparison of calculated A(V) values and values from the literature
 
@@ -263,6 +263,9 @@ def compare_AV_lit(ext_path, lit_path, starpair_list):
 
     lit_path : string
         Path to the literature data
+
+    plot_path : string
+       Path to save the plot
 
     starpair_list : list of strings
         List of star pairs to include in the plot, in the format "reddenedstarname_comparisonstarname" (no spaces)
@@ -298,47 +301,47 @@ def compare_AV_lit(ext_path, lit_path, starpair_list):
         extdata = ExtData("%s%s_ext.fits" % (ext_path, starpair.lower()))
         red_star = starpair.split("_")[0]
         if red_star in CCM89.index:
-            ax.scatter(
+            ax.errorbar(
                 extdata.columns["AV"][0],
                 CCM89.loc[red_star, "A(V)"],
+                xerr=([extdata.columns["AV"][1]], [extdata.columns["AV"][2]]),
+                marker="o",
                 color="tab:blue",
+                elinewidth=1,
             )
         if red_star in VCG04.index:
-            ax.scatter(
+            ax.errorbar(
                 extdata.columns["AV"][0],
                 VCG04.loc[red_star, "A(V)"],
-                color="tab:orange",
+                xerr=([extdata.columns["AV"][1]], [extdata.columns["AV"][2]]),
                 marker="d",
+                color="tab:orange",
+                elinewidth=1,
             )
         if red_star in G09.index:
-            ax.scatter(
+            ax.errorbar(
                 extdata.columns["AV"][0],
                 G09.loc[red_star, "AV"],
-                color="tab:green",
+                xerr=([extdata.columns["AV"][1]], [extdata.columns["AV"][2]]),
                 marker="^",
+                color="tab:green",
+                elinewidth=1,
             )
         if red_star.lower() in G21.index:
-            ax.scatter(
+            ax.errorbar(
                 extdata.columns["AV"][0],
                 G21.loc[red_star.lower(), "A(V)"],
-                color="tab:red",
+                xerr=([extdata.columns["AV"][1]], [extdata.columns["AV"][2]]),
                 marker="P",
+                color="tab:red",
+                elinewidth=1,
             )
-        ax.errorbar(
-            extdata.columns["AV"][0],
-            extdata.columns["AV"][0],
-            # yerr=([extdata.columns["AV"][1]], [extdata.columns["AV"][2]]),
-            yerr=([0.2], [0.2]),
-            color="k",
-            lw=0.5,
-            alpha=0.6,
-        )
 
+    # create the legend
     handle1 = Line2D([], [], lw=0, color="tab:blue", marker="o")
     handle2 = Line2D([], [], lw=0, color="tab:orange", marker="d")
     handle3 = Line2D([], [], lw=0, color="tab:green", marker="^")
     handle4 = Line2D([], [], lw=0, color="tab:red", marker="P")
-
     labels = [
         "Cardelli et al. (1989)",
         "Valencic et al. (2004)",
@@ -346,9 +349,11 @@ def compare_AV_lit(ext_path, lit_path, starpair_list):
         "Gordon et al. (2021)",
     ]
     handles = [handle1, handle2, handle3, handle4]
-    ax.plot([1, 5.7], [1, 5.7], color="k", ls="--")
-    ax.set_xlim(0.9, 5.8)
-    ax.set_ylim(0.9, 5.8)
+
+    # finalize and save the plot
+    ax.plot([0.5, 5.7], [0.5, 5.7], color="k", ls="--")
+    ax.set_xlim(0.45, 5.8)
+    ax.set_ylim(0.45, 5.8)
     ax.set_aspect("equal", adjustable="box")
     plt.legend(handles, labels, fontsize=fs * 0.75)
     plt.xlabel("A(V) from this work")
@@ -376,14 +381,14 @@ if __name__ == "__main__":
         "HD037022_HD034816",
         "HD037023_HD034816",
         "HD037061_HD034816",
-        "HD038087_HD034816",
+        "HD038087_HD051283",
         "HD052721_HD091316",
-        "HD156247_HD031726",
-        "HD166734_HD188209",
+        "HD156247_HD042560",
+        "HD166734_HD031726",
         "HD183143_HD188209",
         "HD185418_HD034816",
         "HD192660_HD204172",
-        "HD204827_HD204172",
+        "HD204827_HD003360",
         "HD206773_HD003360",
         "HD229238_HD214680",
         "HD283809_HD003360",
@@ -391,14 +396,16 @@ if __name__ == "__main__":
     ]
 
     flagged = [
-        "HD037023_HD034816",
+        "HD014250_HD042560",
+        "HD014422_HD214680",
         "HD034921_HD214680",
         "HD037020_HD034816",
         "HD037022_HD034816",
+        "HD037023_HD034816",
         "HD052721_HD091316",
+        "HD166734_HD031726",
         "HD206773_HD003360",
-        "HD014250_HD042560",
-        "HD014422_HD214680",
+        "HD294264_HD034759",
     ]
 
     # subtract the flagged stars from the star pair list
@@ -417,4 +424,4 @@ if __name__ == "__main__":
 
     # create plots
     plot_param_triangle(inpath, plot_path, good_stars)
-    compare_AV_lit(inpath, data_path, good_stars)
+    compare_AV_lit(inpath, data_path, plot_path, good_stars)
