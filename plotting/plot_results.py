@@ -80,11 +80,11 @@ def table_results(inpath, outpath, starpair_list, flagged):
         names=(
             "reddened",
             "comparison",
-            "amplitude",
+            "$S$",
             r"$\alpha$",
-            "A(V)",
-            "E(B-V)",
-            "R(V)",
+            "$A(V)$",
+            "$E(B-V)$",
+            "$R(V)$",
         ),
         dtype=("str", "str", "str", "str", "str", "str", "str"),
     )
@@ -170,9 +170,8 @@ def table_results(inpath, outpath, starpair_list, flagged):
     )
 
 
-def plot_params(ax, x, y, x_err=None, y_err=None, flagged=None):
+def plot_params(ax, x, y, x_err=None, y_err=None):
     ax.errorbar(x, y, xerr=x_err, yerr=y_err, fmt=".k", zorder=0)
-    print(x)
     rho, p = stats.spearmanr(x, y)
     ax.text(
         0.95,
@@ -182,73 +181,70 @@ def plot_params(ax, x, y, x_err=None, y_err=None, flagged=None):
         horizontalalignment="right",
         transform=ax.transAxes,
     )
-    # indicate the flagged curves in red
-    if flagged is not None:
-        ax.scatter(x[flagged], y[flagged], color="r", s=10)
-        rho2, p2 = stats.spearmanr(x[~flagged], y[~flagged])
-        ax.text(
-            0.95,
-            0.8,
-            r"$\rho =$" + "{:1.2f}".format(rho2),
-            color="green",
-            fontsize=12,
-            horizontalalignment="right",
-            transform=ax.transAxes,
-        )
 
 
-def plot_param_triangle(inpath, outpath, starpair_list, flagged):
-    amplitudes, amp_l, amp_u, alphas, alpha_l, alpha_u, AVs, AV_l, AV_u, RVs = (
-        np.zeros(len(starpair_list)) for i in range(10)
-    )
-    flags = np.zeros(len(starpair_list), dtype=bool)
+def plot_param_triangle(inpath, outpath, starpair_list):
+    (
+        amplitudes,
+        amp_min,
+        amp_plus,
+        alphas,
+        alpha_min,
+        alpha_plus,
+        AVs,
+        AV_min,
+        AV_plus,
+        RVs,
+        RV_min,
+        RV_plus,
+    ) = (np.zeros(len(starpair_list)) for i in range(12))
 
     # retrieve the fitting results
     for i, starpair in enumerate(starpair_list):
         extdata = ExtData("%s%s_ext.fits" % (inpath, starpair.lower()))
         amplitudes[i] = extdata.model["params"][0].value
-        amp_l[i] = extdata.model["params"][0].unc_minus
-        amp_u[i] = extdata.model["params"][0].unc_plus
+        amp_min[i] = extdata.model["params"][0].unc_minus
+        amp_plus[i] = extdata.model["params"][0].unc_plus
         alphas[i] = extdata.model["params"][2].value
-        alpha_l[i] = extdata.model["params"][2].unc_minus
-        alpha_u[i] = extdata.model["params"][2].unc_plus
+        alpha_min[i] = extdata.model["params"][2].unc_minus
+        alpha_plus[i] = extdata.model["params"][2].unc_plus
         AVs[i] = extdata.model["params"][3].value
-        AV_l[i] = extdata.model["params"][3].unc_minus
-        AV_u[i] = extdata.model["params"][3].unc_plus
+        AV_min[i] = extdata.model["params"][3].unc_minus
+        AV_plus[i] = extdata.model["params"][3].unc_plus
         RVs[i] = extdata.columns["RV"][0]
-        if starpair in flagged:
-            flags[i] = True
-        # TODO: add RV uncertainties!!
+        RV_min[i] = extdata.columns["RV"][1]
+        RV_plus[i] = extdata.columns["RV"][2]
 
     # create the plot
     fig, ax = plt.subplots(3, 3, figsize=(10, 10), sharex="col", sharey="row")
-    fs = 16
 
     # plot alpha vs. amplitude
-    plot_params(ax[0, 0], amplitudes, alphas, (amp_l, amp_u), (alpha_l, alpha_u), flags)
+    plot_params(
+        ax[0, 0], amplitudes, alphas, (amp_min, amp_plus), (alpha_min, alpha_plus)
+    )
 
     # plot A(V) vs. amplitude
-    plot_params(ax[1, 0], amplitudes, AVs, (amp_l, amp_u), (AV_l, AV_u), flags)
+    plot_params(ax[1, 0], amplitudes, AVs, (amp_min, amp_plus), (AV_min, AV_plus))
 
     # plot R(V) vs. amplitude
-    plot_params(ax[2, 0], amplitudes, RVs, (amp_l, amp_u), flagged=flags)
+    plot_params(ax[2, 0], amplitudes, RVs, (amp_min, amp_plus), (RV_min, RV_plus))
 
     # plot A(V) vs. alpha
-    plot_params(ax[1, 1], alphas, AVs, (alpha_l, alpha_u), (AV_l, AV_u), flags)
+    plot_params(ax[1, 1], alphas, AVs, (alpha_min, alpha_plus), (AV_min, AV_plus))
 
     # plot R(V) vs. alpha
-    plot_params(ax[2, 1], alphas, RVs, (alpha_l, alpha_u), flagged=flags)
+    plot_params(ax[2, 1], alphas, RVs, (alpha_min, alpha_plus), (RV_min, RV_plus))
 
     # plot R(V) vs. A(V)
-    plot_params(ax[2, 2], AVs, RVs, (AV_l, AV_u), flagged=flags)
+    plot_params(ax[2, 2], AVs, RVs, (AV_min, AV_plus), (RV_min, RV_plus))
 
     # finalize the plot
     ax[0, 0].set_ylabel(r"$\alpha$", fontsize=fs)
-    ax[1, 0].set_ylabel("A(V)", fontsize=fs)
-    ax[2, 0].set_ylabel("R(V)", fontsize=fs)
-    ax[2, 0].set_xlabel("amplitude", fontsize=fs)
+    ax[1, 0].set_ylabel("$A(V)$", fontsize=fs)
+    ax[2, 0].set_ylabel("$R(V)$", fontsize=fs)
+    ax[2, 0].set_xlabel("$S$", fontsize=fs)
     ax[2, 1].set_xlabel(r"$\alpha$", fontsize=fs)
-    ax[2, 2].set_xlabel("A(V)", fontsize=fs)
+    ax[2, 2].set_xlabel("$A(V)$", fontsize=fs)
     ax[0, 1].axis("off")
     ax[0, 2].axis("off")
     ax[1, 2].axis("off")
@@ -344,10 +340,10 @@ def compare_AV_lit(ext_path, lit_path, starpair_list):
     handle4 = Line2D([], [], lw=0, color="tab:red", marker="P")
 
     labels = [
-        "Cardelli et. al 1989",
-        "Valencic et al. 2004",
-        "Gordon et al. 2009",
-        "Gordon et al. 2021",
+        "Cardelli et al. (1989)",
+        "Valencic et al. (2004)",
+        "Gordon et al. (2009)",
+        "Gordon et al. (2021)",
     ]
     handles = [handle1, handle2, handle3, handle4]
     ax.plot([1, 5.7], [1, 5.7], color="k", ls="--")
@@ -420,5 +416,5 @@ if __name__ == "__main__":
     # table_results(inpath, table_path, starpair_list, flagged)
 
     # create plots
-    # plot_param_triangle(inpath, plot_path, starpair_list, flagged)
+    plot_param_triangle(inpath, plot_path, good_stars)
     compare_AV_lit(inpath, data_path, good_stars)
