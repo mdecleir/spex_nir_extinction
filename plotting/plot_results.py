@@ -11,7 +11,7 @@ from matplotlib.lines import Line2D
 from measure_extinction.extdata import ExtData
 
 
-def table_results(inpath, outpath, starpair_list, flagged):
+def table_results(inpath, outpath, diffuse, dense):
     """
     Create tables with the fitting results:
         - One to save as a text file
@@ -25,17 +25,17 @@ def table_results(inpath, outpath, starpair_list, flagged):
     outpath : string
         Path to save the tables
 
-    starpair_list : list of strings
-        List of star pairs to include in the tables, in the format "reddenedstarname_comparisonstarname" (no spaces)
+    diffuse : list of strings
+        List of diffuse star pairs to include in the tables, in the format "reddenedstarname_comparisonstarname" (no spaces)
 
-    flagged : list of strings
-        List of star pairs to exclude from the tables, in the format "reddenedstarname_comparisonstarname" (no spaces)
+    dense : list of strings
+        List of dense star pairs to include in the tables, in the format "reddenedstarname_comparisonstarname" (no spaces)
 
     Returns
     -------
     Tables with fitting results
     """
-    # create empty tables
+    # create empty tables for the diffuse sightlines
     table_txt = Table(
         names=(
             "reddened",
@@ -89,10 +89,8 @@ def table_results(inpath, outpath, starpair_list, flagged):
         dtype=("str", "str", "str", "str", "str", "str", "str"),
     )
 
-    # retrieve the fitting results for all stars
-    for starpair in starpair_list:
-        if starpair in flagged:
-            continue
+    # retrieve the fitting results for all diffuse sightlines and add them to the table
+    for starpair in diffuse:
         extdata = ExtData("%s%s_ext.fits" % (inpath, starpair.lower()))
         table_txt.add_row(
             (
@@ -154,17 +152,149 @@ def table_results(inpath, outpath, starpair_list, flagged):
 
     # write the tables to files
     table_txt.write(
-        outpath + "fitting_results.dat",
+        outpath + "fitting_results_diff.dat",
         format="ascii.commented_header",
         overwrite=True,
     )
 
     table_lat.write(
-        outpath + "fitting_results.tex",
+        outpath + "fitting_results_diff.tex",
         format="aastex",
         latexdict={
             "tabletype": "deluxetable*",
-            "caption": r"MCMC fitting results for the extinction curves: the amplitude and index $\alpha$ of the powerlaw, and A(V) are directly obtained from the fitting, while E(B-V) is obtained from the observations, and R(V) is calculated as R(V)=A(V)/E(B-V). \label{tab:fit_results}",
+            "caption": r"MCMC fitting results for the 13 diffuse extinction curves: the amplitude $S$ and index $\alpha$ of the powerlaw, and $A(V)$ are directly obtained from the fitting, while $E(B-V)$ is obtained from the observations, and $R(V)$ is calculated as $R(V)=A(V)/E(B-V)$. \label{tab:fit_results_diff}",
+        },
+        overwrite=True,
+    )
+
+    # create empty tables for the dense sightlines
+    table_txt = Table(
+        names=(
+            "reddened",
+            "comparison",
+            "amplitude",
+            "ampl. left unc.",
+            "ampl. right unc.",
+            "alpha",
+            "alpha left unc.",
+            "alpha right unc.",
+            "AV",
+            "AV left unc.",
+            "AV right unc.",
+            "EBV",
+            "EBV left unc.",
+            "EBV right unc.",
+            "RV",
+            "RV left unc.",
+            "RV right unc.",
+        ),
+        dtype=(
+            "str",
+            "str",
+            "float64",
+            "float64",
+            "float64",
+            "float64",
+            "float64",
+            "float64",
+            "float64",
+            "float64",
+            "float64",
+            "float64",
+            "float64",
+            "float64",
+            "float64",
+            "float64",
+            "float64",
+        ),
+    )
+    table_lat = Table(
+        names=(
+            "reddened",
+            "comparison",
+            "$S$",
+            r"$\alpha$",
+            "$A(V)$",
+            "$E(B-V)$",
+            "$R(V)$",
+        ),
+        dtype=("str", "str", "str", "str", "str", "str", "str"),
+    )
+
+    # retrieve the fitting results for all dense sightlines and add them to the table
+    for starpair in dense:
+        extdata = ExtData("%s%s_ext.fits" % (inpath, starpair.lower()))
+        table_txt.add_row(
+            (
+                starpair.split("_")[0],
+                starpair.split("_")[1],
+                extdata.model["params"][0].value,
+                extdata.model["params"][0].unc_minus,
+                extdata.model["params"][0].unc_plus,
+                extdata.model["params"][2].value,
+                extdata.model["params"][2].unc_minus,
+                extdata.model["params"][2].unc_plus,
+                extdata.columns["AV"][0],
+                extdata.columns["AV"][1],
+                extdata.columns["AV"][2],
+                extdata.columns["EBV"][0],
+                extdata.columns["EBV"][1],
+                extdata.columns["EBV"][2],
+                extdata.columns["RV"][0],
+                extdata.columns["RV"][1],
+                extdata.columns["RV"][2],
+            )
+        )
+        table_lat.add_row(
+            (
+                starpair.split("_")[0],
+                starpair.split("_")[1],
+                "${:.2f}".format(extdata.model["params"][0].value)
+                + "_{-"
+                + "{:.3f}".format(extdata.model["params"][0].unc_minus)
+                + "}^{+"
+                + "{:.3f}".format(extdata.model["params"][0].unc_plus)
+                + "}$",
+                "${:.2f}".format(extdata.model["params"][2].value)
+                + "_{-"
+                + "{:.3f}".format(extdata.model["params"][2].unc_minus)
+                + "}^{+"
+                + "{:.3f}".format(extdata.model["params"][2].unc_plus)
+                + "}$",
+                "${:.2f}".format(extdata.columns["AV"][0])
+                + "_{-"
+                + "{:.3f}".format(extdata.columns["AV"][1])
+                + "}^{+"
+                + "{:.3f}".format(extdata.columns["AV"][2])
+                + "}$",
+                "${:.2f}".format(extdata.columns["EBV"][0])
+                + "_{-"
+                + "{:.3f}".format(extdata.columns["EBV"][1])
+                + "}^{+"
+                + "{:.3f}".format(extdata.columns["EBV"][2])
+                + "}$",
+                "${:.2f}".format(extdata.columns["RV"][0])
+                + "_{-"
+                + "{:.3f}".format(extdata.columns["RV"][1])
+                + "}^{+"
+                + "{:.3f}".format(extdata.columns["RV"][2])
+                + "}$",
+            )
+        )
+
+    # write the tables to files
+    table_txt.write(
+        outpath + "fitting_results_dense.dat",
+        format="ascii.commented_header",
+        overwrite=True,
+    )
+
+    table_lat.write(
+        outpath + "fitting_results_dense.tex",
+        format="aastex",
+        latexdict={
+            "tabletype": "deluxetable*",
+            "caption": r"MCMC fitting results for the 2 dense extinction curves: the amplitude $S$ and index $\alpha$ of the powerlaw, and $A(V)$ are directly obtained from the fitting, while $E(B-V)$ is obtained from the observations, and $R(V)$ is calculated as $R(V)=A(V)/E(B-V)$. \label{tab:fit_results_dense}",
         },
         overwrite=True,
     )
@@ -356,8 +486,8 @@ def compare_AV_lit(ext_path, lit_path, plot_path, starpair_list):
     ax.set_ylim(0.45, 5.8)
     ax.set_aspect("equal", adjustable="box")
     plt.legend(handles, labels, fontsize=fs * 0.75)
-    plt.xlabel("A(V) from this work")
-    plt.ylabel("A(V) from the literature")
+    plt.xlabel(r"$A(V)$ from this work")
+    plt.ylabel(r"$A(V)$ from the literature")
     plt.savefig(plot_path + "AV_comparison.pdf", bbox_inches="tight")
 
 
@@ -367,7 +497,8 @@ if __name__ == "__main__":
     data_path = "/Users/mdecleir/spex_nir_extinction/data/"
     plot_path = "/Users/mdecleir/spex_nir_extinction/Figures/"
     table_path = "/Users/mdecleir/spex_nir_extinction/Tables/"
-    starpair_list = [
+
+    diffuse = [
         "BD+56d524_HD034816",
         "HD013338_HD031726",
         "HD014250_HD042560",
@@ -375,7 +506,6 @@ if __name__ == "__main__":
         "HD014956_HD188209",
         "HD017505_HD214680",
         "HD029309_HD042560",
-        "HD029647_HD042560",
         # "HD034921_HD214680",
         "HD037020_HD034816",
         "HD037022_HD034816",
@@ -391,9 +521,10 @@ if __name__ == "__main__":
         "HD204827_HD003360",
         "HD206773_HD003360",
         "HD229238_HD214680",
-        "HD283809_HD003360",
         "HD294264_HD034759",
     ]
+
+    dense = ["HD029647_HD042560", "HD283809_HD003360"]
 
     flagged = [
         "HD014250_HD042560",
@@ -409,7 +540,8 @@ if __name__ == "__main__":
     ]
 
     # subtract the flagged stars from the star pair list
-    good_stars = list((Counter(starpair_list) - Counter(flagged)).elements())
+    good_diffuse = list((Counter(diffuse) - Counter(flagged)).elements())
+    good_dense = list((Counter(dense) - Counter(flagged)).elements())
 
     # settings for the plotting
     fs = 18
@@ -420,8 +552,8 @@ if __name__ == "__main__":
     plt.rc("ytick.major", width=1, size=8)
 
     # create tables
-    # table_results(inpath, table_path, starpair_list, flagged)
+    # table_results(inpath, table_path, good_diffuse, good_dense)
 
     # create plots
-    plot_param_triangle(inpath, plot_path, good_stars)
-    compare_AV_lit(inpath, data_path, plot_path, good_stars)
+    # plot_param_triangle(inpath, plot_path, good_stars)
+    # compare_AV_lit(inpath, data_path, plot_path, good_diffuse + good_dense)
