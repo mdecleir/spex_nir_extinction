@@ -426,20 +426,19 @@ if __name__ == "__main__":
         # "HD037022_HD034816",
         # "HD037023_HD034816",
         "HD037061_HD034816",
-        "HD038087_HD034816",
+        "HD038087_HD051283",
         # "HD052721_HD091316",
-        "HD156247_HD031726",
+        "HD156247_HD042560",
         # "HD166734_HD031726",
         "HD183143_HD188209",
         "HD185418_HD034816",
         "HD192660_HD204172",
-        "HD204827_HD204172",
+        "HD204827_HD003360",
         # "HD206773_HD003360",
         "HD229238_HD214680",
         # "HD294264_HD034759",
     ]
     # dense = ["HD029647_HD042560", "HD283809_HD003360"]
-    dense_samp = ["HD283809_HD003360"]
 
     # calculate and fit the average diffuse extinction curve
     # calc_fit_average(diffuse, path)

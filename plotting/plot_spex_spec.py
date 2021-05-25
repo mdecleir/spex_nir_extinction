@@ -93,12 +93,12 @@ def plot_red_spectra(inpath, outpath):
         "HD185418",
         "HD013338",
         "HD017505",
+        "HD038087",
         "BD+56d524",
         "HD192660",
-        "HD204827",
         "HD029309",
         "HD014956",
-        "HD038087",
+        "HD204827",
         "HD037061",
         "HD229238",
         "HD029647",
@@ -108,23 +108,23 @@ def plot_red_spectra(inpath, outpath):
 
     # specify the offsets and angles for the star names
     offsets = [
-        0.1,
+        0.09,
         0.22,
         0.21,
-        0.17,
-        0.2,
-        0.18,
-        0.2,
         0.15,
         0.22,
+        0.20,
+        0.2,
         0.17,
+        0.22,
+        0.22,
         0.18,
         0.18,
         0.24,
         0.26,
         0.24,
     ]
-    angles = [15, 17, 19, 15, 25, 33, 32, 30, 32, 26, 32, 40, 46, 50, 60]
+    angles = [15, 17, 19, 17, 25, 25, 30, 28, 33, 32, 32, 40, 46, 50, 60]
 
     # plot the spectra
     fig, ax = plot_multi_spectra(
