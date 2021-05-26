@@ -117,36 +117,36 @@ def table_results(inpath, outpath, diffuse, dense):
             (
                 starpair.split("_")[0],
                 starpair.split("_")[1],
-                "${:.2f}".format(extdata.model["params"][0].value)
+                "{:.2f}".format(extdata.model["params"][0].value)
                 + "_{-"
                 + "{:.3f}".format(extdata.model["params"][0].unc_minus)
                 + "}^{+"
                 + "{:.3f}".format(extdata.model["params"][0].unc_plus)
-                + "}$",
-                "${:.2f}".format(extdata.model["params"][2].value)
+                + "}",
+                "{:.2f}".format(extdata.model["params"][2].value)
                 + "_{-"
                 + "{:.3f}".format(extdata.model["params"][2].unc_minus)
                 + "}^{+"
                 + "{:.3f}".format(extdata.model["params"][2].unc_plus)
-                + "}$",
-                "${:.2f}".format(extdata.columns["AV"][0])
+                + "}",
+                "{:.2f}".format(extdata.columns["AV"][0])
                 + "_{-"
                 + "{:.3f}".format(extdata.columns["AV"][1])
                 + "}^{+"
                 + "{:.3f}".format(extdata.columns["AV"][2])
-                + "}$",
-                "${:.2f}".format(extdata.columns["EBV"][0])
+                + "}",
+                "{:.2f}".format(extdata.columns["EBV"][0])
                 + "_{-"
                 + "{:.3f}".format(extdata.columns["EBV"][1])
                 + "}^{+"
                 + "{:.3f}".format(extdata.columns["EBV"][2])
-                + "}$",
-                "${:.2f}".format(extdata.columns["RV"][0])
+                + "}",
+                "{:.2f}".format(extdata.columns["RV"][0])
                 + "_{-"
                 + "{:.3f}".format(extdata.columns["RV"][1])
                 + "}^{+"
                 + "{:.3f}".format(extdata.columns["RV"][2])
-                + "}$",
+                + "}",
             )
         )
 
@@ -160,6 +160,7 @@ def table_results(inpath, outpath, diffuse, dense):
     table_lat.write(
         outpath + "fitting_results_diff.tex",
         format="aastex",
+        col_align="ll|CCCCC",
         latexdict={
             "tabletype": "deluxetable*",
             "caption": r"MCMC fitting results for the 13 diffuse extinction curves: the amplitude $S$ and index $\alpha$ of the powerlaw, and $A(V)$ are directly obtained from the fitting, while $E(B-V)$ is obtained from the observations, and $R(V)$ is calculated as $R(V)=A(V)/E(B-V)$. \label{tab:fit_results_diff}",
@@ -249,36 +250,36 @@ def table_results(inpath, outpath, diffuse, dense):
             (
                 starpair.split("_")[0],
                 starpair.split("_")[1],
-                "${:.2f}".format(extdata.model["params"][0].value)
+                "{:.2f}".format(extdata.model["params"][0].value)
                 + "_{-"
                 + "{:.3f}".format(extdata.model["params"][0].unc_minus)
                 + "}^{+"
                 + "{:.3f}".format(extdata.model["params"][0].unc_plus)
-                + "}$",
-                "${:.2f}".format(extdata.model["params"][2].value)
+                + "}",
+                "{:.2f}".format(extdata.model["params"][2].value)
                 + "_{-"
                 + "{:.3f}".format(extdata.model["params"][2].unc_minus)
                 + "}^{+"
                 + "{:.3f}".format(extdata.model["params"][2].unc_plus)
-                + "}$",
-                "${:.2f}".format(extdata.columns["AV"][0])
+                + "}",
+                "{:.2f}".format(extdata.columns["AV"][0])
                 + "_{-"
                 + "{:.3f}".format(extdata.columns["AV"][1])
                 + "}^{+"
                 + "{:.3f}".format(extdata.columns["AV"][2])
-                + "}$",
-                "${:.2f}".format(extdata.columns["EBV"][0])
+                + "}",
+                "{:.2f}".format(extdata.columns["EBV"][0])
                 + "_{-"
                 + "{:.3f}".format(extdata.columns["EBV"][1])
                 + "}^{+"
                 + "{:.3f}".format(extdata.columns["EBV"][2])
-                + "}$",
-                "${:.2f}".format(extdata.columns["RV"][0])
+                + "}",
+                "{:.2f}".format(extdata.columns["RV"][0])
                 + "_{-"
                 + "{:.3f}".format(extdata.columns["RV"][1])
                 + "}^{+"
                 + "{:.3f}".format(extdata.columns["RV"][2])
-                + "}$",
+                + "}",
             )
         )
 
@@ -292,6 +293,7 @@ def table_results(inpath, outpath, diffuse, dense):
     table_lat.write(
         outpath + "fitting_results_dense.tex",
         format="aastex",
+        col_align="ll|CCCCC",
         latexdict={
             "tabletype": "deluxetable*",
             "caption": r"MCMC fitting results for the 2 dense extinction curves: the amplitude $S$ and index $\alpha$ of the powerlaw, and $A(V)$ are directly obtained from the fitting, while $E(B-V)$ is obtained from the observations, and $R(V)$ is calculated as $R(V)=A(V)/E(B-V)$. \label{tab:fit_results_dense}",
@@ -300,8 +302,36 @@ def table_results(inpath, outpath, diffuse, dense):
     )
 
 
-def plot_params(ax, x, y, x_err=None, y_err=None):
-    ax.errorbar(x, y, xerr=x_err, yerr=y_err, fmt=".k", zorder=0)
+def plot_params(
+    ax,
+    dense,
+    x,
+    y,
+    x_err=None,
+    y_err=None,
+):
+    # give the dense sightlines a different color and marker
+    ax.errorbar(
+        x[dense],
+        y[dense],
+        xerr=(x_err[0][dense], x_err[1][dense]),
+        yerr=(y_err[0][dense], y_err[1][dense]),
+        fmt="s",
+        color="magenta",
+        markersize=4,
+        zorder=0,
+        label="dense",
+    )
+    ax.errorbar(
+        x[~dense],
+        y[~dense],
+        xerr=(x_err[0][~dense], x_err[1][~dense]),
+        yerr=(y_err[0][~dense], y_err[1][~dense]),
+        fmt="ok",
+        markersize=4,
+        zorder=0,
+        label="diffuse",
+    )
     rho, p = stats.spearmanr(x, y)
     ax.text(
         0.95,
@@ -313,7 +343,7 @@ def plot_params(ax, x, y, x_err=None, y_err=None):
     )
 
 
-def plot_param_triangle(inpath, outpath, starpair_list):
+def plot_param_triangle(inpath, outpath, diffuse, dense):
     (
         amplitudes,
         amp_min,
@@ -327,10 +357,11 @@ def plot_param_triangle(inpath, outpath, starpair_list):
         RVs,
         RV_min,
         RV_plus,
-    ) = (np.zeros(len(starpair_list)) for i in range(12))
+    ) = (np.zeros(len(diffuse + dense)) for i in range(12))
+    dense_bool = np.full(len(diffuse + dense), False)
 
-    # retrieve the fitting results
-    for i, starpair in enumerate(starpair_list):
+    # retrieve the fitting results for all sightlines
+    for i, starpair in enumerate(diffuse + dense):
         extdata = ExtData("%s%s_ext.fits" % (inpath, starpair.lower()))
         amplitudes[i] = extdata.model["params"][0].value
         amp_min[i] = extdata.model["params"][0].unc_minus
@@ -338,35 +369,52 @@ def plot_param_triangle(inpath, outpath, starpair_list):
         alphas[i] = extdata.model["params"][2].value
         alpha_min[i] = extdata.model["params"][2].unc_minus
         alpha_plus[i] = extdata.model["params"][2].unc_plus
-        AVs[i] = extdata.model["params"][3].value
-        AV_min[i] = extdata.model["params"][3].unc_minus
-        AV_plus[i] = extdata.model["params"][3].unc_plus
+        AVs[i] = extdata.columns["AV"][0]
+        AV_min[i] = extdata.columns["AV"][1]
+        AV_plus[i] = extdata.columns["AV"][2]
         RVs[i] = extdata.columns["RV"][0]
         RV_min[i] = extdata.columns["RV"][1]
         RV_plus[i] = extdata.columns["RV"][2]
+
+        # flag the dense sightlines
+        if starpair in dense:
+            dense_bool[i] = True
 
     # create the plot
     fig, ax = plt.subplots(3, 3, figsize=(10, 10), sharex="col", sharey="row")
 
     # plot alpha vs. amplitude
     plot_params(
-        ax[0, 0], amplitudes, alphas, (amp_min, amp_plus), (alpha_min, alpha_plus)
+        ax[0, 0],
+        dense_bool,
+        amplitudes,
+        alphas,
+        (amp_min, amp_plus),
+        (alpha_min, alpha_plus),
     )
 
     # plot A(V) vs. amplitude
-    plot_params(ax[1, 0], amplitudes, AVs, (amp_min, amp_plus), (AV_min, AV_plus))
+    plot_params(
+        ax[1, 0], dense_bool, amplitudes, AVs, (amp_min, amp_plus), (AV_min, AV_plus)
+    )
 
     # plot R(V) vs. amplitude
-    plot_params(ax[2, 0], amplitudes, RVs, (amp_min, amp_plus), (RV_min, RV_plus))
+    plot_params(
+        ax[2, 0], dense_bool, amplitudes, RVs, (amp_min, amp_plus), (RV_min, RV_plus)
+    )
 
     # plot A(V) vs. alpha
-    plot_params(ax[1, 1], alphas, AVs, (alpha_min, alpha_plus), (AV_min, AV_plus))
+    plot_params(
+        ax[1, 1], dense_bool, alphas, AVs, (alpha_min, alpha_plus), (AV_min, AV_plus)
+    )
 
     # plot R(V) vs. alpha
-    plot_params(ax[2, 1], alphas, RVs, (alpha_min, alpha_plus), (RV_min, RV_plus))
+    plot_params(
+        ax[2, 1], dense_bool, alphas, RVs, (alpha_min, alpha_plus), (RV_min, RV_plus)
+    )
 
     # plot R(V) vs. A(V)
-    plot_params(ax[2, 2], AVs, RVs, (AV_min, AV_plus), (RV_min, RV_plus))
+    plot_params(ax[2, 2], dense_bool, AVs, RVs, (AV_min, AV_plus), (RV_min, RV_plus))
 
     # finalize the plot
     ax[0, 0].set_ylabel(r"$\alpha$", fontsize=fs)
@@ -378,7 +426,9 @@ def plot_param_triangle(inpath, outpath, starpair_list):
     ax[0, 1].axis("off")
     ax[0, 2].axis("off")
     ax[1, 2].axis("off")
+    handles, labels = ax[0, 0].get_legend_handles_labels()
     plt.subplots_adjust(wspace=0, hspace=0)
+    fig.legend(handles, labels, bbox_to_anchor=(0.88, 0.88))
     plt.savefig(outpath + "params.pdf", bbox_inches="tight")
 
 
@@ -555,5 +605,5 @@ if __name__ == "__main__":
     # table_results(inpath, table_path, good_diffuse, good_dense)
 
     # create plots
-    # plot_param_triangle(inpath, plot_path, good_stars)
+    plot_param_triangle(inpath, plot_path, good_diffuse, good_dense)
     # compare_AV_lit(inpath, data_path, plot_path, good_diffuse + good_dense)
