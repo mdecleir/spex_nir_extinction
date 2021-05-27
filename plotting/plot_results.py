@@ -13,7 +13,7 @@ from measure_extinction.extdata import ExtData
 
 def table_results(inpath, outpath, diffuse, dense):
     """
-    Create tables with the fitting results:
+    Create tables with the fitting results for diffuse and dense sightlines separately:
         - One to save as a text file
         - One in the aastex format
 
@@ -35,26 +35,27 @@ def table_results(inpath, outpath, diffuse, dense):
     -------
     Tables with fitting results
     """
-    # create empty tables for the diffuse sightlines
+    # diffuse sightlines
+    # create empty tables
     table_txt = Table(
         names=(
             "reddened",
             "comparison",
             "amplitude",
-            "ampl. left unc.",
-            "ampl. right unc.",
+            "ampl_munc",
+            "ampl_punc",
             "alpha",
-            "alpha left unc.",
-            "alpha right unc.",
+            "alpha_munc",
+            "alpha_punc",
             "AV",
-            "AV left unc.",
-            "AV right unc.",
+            "AV_munc",
+            "AV_punc",
             "EBV",
-            "EBV left unc.",
-            "EBV right unc.",
+            "EBV_munc",
+            "EBV_punc",
             "RV",
-            "RV left unc.",
-            "RV right unc.",
+            "RV_munc",
+            "RV_punc",
         ),
         dtype=(
             "str",
@@ -89,7 +90,7 @@ def table_results(inpath, outpath, diffuse, dense):
         dtype=("str", "str", "str", "str", "str", "str", "str"),
     )
 
-    # retrieve the fitting results for all diffuse sightlines and add them to the table
+    # retrieve the fitting results and add them to the tables
     for starpair in diffuse:
         extdata = ExtData("%s%s_ext.fits" % (inpath, starpair.lower()))
         table_txt.add_row(
@@ -163,35 +164,60 @@ def table_results(inpath, outpath, diffuse, dense):
         col_align="ll|CCCCC",
         latexdict={
             "tabletype": "deluxetable*",
-            "caption": r"MCMC fitting results for the 13 diffuse extinction curves: the amplitude $S$ and index $\alpha$ of the powerlaw, and $A(V)$ are directly obtained from the fitting, while $E(B-V)$ is obtained from the observations, and $R(V)$ is calculated as $R(V)=A(V)/E(B-V)$. \label{tab:fit_results_diff}",
+            "caption": r"MCMC fitting results for the 13 diffuse extinction curves: the amplitude $S$ and index $\alpha$ of the power law, and $A(V)$ are directly obtained from the fitting, while $E(B-V)$ is obtained from the observations, and $R(V)$ is calculated as $R(V)=A(V)/E(B-V)$. \label{tab:fit_results_diff}",
         },
         overwrite=True,
     )
 
-    # create empty tables for the dense sightlines
+    # dense sightlines
+    # create empty tables
     table_txt = Table(
         names=(
             "reddened",
             "comparison",
-            "amplitude",
-            "ampl. left unc.",
-            "ampl. right unc.",
+            "ampl",
+            "ampl_munc",
+            "ampl_punc",
             "alpha",
-            "alpha left unc.",
-            "alpha right unc.",
+            "alpha_munc",
+            "alpha_punc",
+            "strength",
+            "strength_munc",
+            "strength_punc",
+            "centwave",
+            "centwave_munc",
+            "centwave_punc",
+            "width",
+            "width_munc",
+            "width_punc",
+            "asym",
+            "asym_munc",
+            "asym_punc",
             "AV",
-            "AV left unc.",
-            "AV right unc.",
+            "AV_munc",
+            "AV_punc",
             "EBV",
-            "EBV left unc.",
-            "EBV right unc.",
+            "EBV_munc",
+            "EBV_punc",
             "RV",
-            "RV left unc.",
-            "RV right unc.",
+            "RV_munc",
+            "RV_punc",
         ),
         dtype=(
             "str",
             "str",
+            "float64",
+            "float64",
+            "float64",
+            "float64",
+            "float64",
+            "float64",
+            "float64",
+            "float64",
+            "float64",
+            "float64",
+            "float64",
+            "float64",
             "float64",
             "float64",
             "float64",
@@ -215,14 +241,30 @@ def table_results(inpath, outpath, diffuse, dense):
             "comparison",
             "$S$",
             r"$\alpha$",
+            r"$B$",
+            r"$\lambda_0$",
+            r"$\gamma_0$",
+            r"$a$",
             "$A(V)$",
             "$E(B-V)$",
             "$R(V)$",
         ),
-        dtype=("str", "str", "str", "str", "str", "str", "str"),
+        dtype=(
+            "str",
+            "str",
+            "str",
+            "str",
+            "str",
+            "str",
+            "str",
+            "str",
+            "str",
+            "str",
+            "str",
+        ),
     )
 
-    # retrieve the fitting results for all dense sightlines and add them to the table
+    # retrieve the fitting results and add them to the tables
     for starpair in dense:
         extdata = ExtData("%s%s_ext.fits" % (inpath, starpair.lower()))
         table_txt.add_row(
@@ -235,6 +277,18 @@ def table_results(inpath, outpath, diffuse, dense):
                 extdata.model["params"][2].value,
                 extdata.model["params"][2].unc_minus,
                 extdata.model["params"][2].unc_plus,
+                extdata.model["params"][3].value,
+                extdata.model["params"][3].unc_minus,
+                extdata.model["params"][3].unc_plus,
+                extdata.model["params"][4].value,
+                extdata.model["params"][4].unc_minus,
+                extdata.model["params"][4].unc_plus,
+                extdata.model["params"][5].value,
+                extdata.model["params"][5].unc_minus,
+                extdata.model["params"][5].unc_plus,
+                extdata.model["params"][6].value,
+                extdata.model["params"][6].unc_minus,
+                extdata.model["params"][6].unc_plus,
                 extdata.columns["AV"][0],
                 extdata.columns["AV"][1],
                 extdata.columns["AV"][2],
@@ -261,6 +315,30 @@ def table_results(inpath, outpath, diffuse, dense):
                 + "{:.3f}".format(extdata.model["params"][2].unc_minus)
                 + "}^{+"
                 + "{:.3f}".format(extdata.model["params"][2].unc_plus)
+                + "}",
+                "{:.2f}".format(extdata.model["params"][3].value)
+                + "_{-"
+                + "{:.3f}".format(extdata.model["params"][3].unc_minus)
+                + "}^{+"
+                + "{:.3f}".format(extdata.model["params"][3].unc_plus)
+                + "}",
+                "{:.2f}".format(extdata.model["params"][4].value)
+                + "_{-"
+                + "{:.3f}".format(extdata.model["params"][4].unc_minus)
+                + "}^{+"
+                + "{:.3f}".format(extdata.model["params"][4].unc_plus)
+                + "}",
+                "{:.2f}".format(extdata.model["params"][5].value)
+                + "_{-"
+                + "{:.3f}".format(extdata.model["params"][5].unc_minus)
+                + "}^{+"
+                + "{:.3f}".format(extdata.model["params"][5].unc_plus)
+                + "}",
+                "{:.2f}".format(extdata.model["params"][6].value)
+                + "_{-"
+                + "{:.3f}".format(extdata.model["params"][6].unc_minus)
+                + "}^{+"
+                + "{:.3f}".format(extdata.model["params"][6].unc_plus)
                 + "}",
                 "{:.2f}".format(extdata.columns["AV"][0])
                 + "_{-"
@@ -293,10 +371,10 @@ def table_results(inpath, outpath, diffuse, dense):
     table_lat.write(
         outpath + "fitting_results_dense.tex",
         format="aastex",
-        col_align="ll|CCCCC",
+        col_align="ll|CCCCCCCCC",
         latexdict={
             "tabletype": "deluxetable*",
-            "caption": r"MCMC fitting results for the 2 dense extinction curves: the amplitude $S$ and index $\alpha$ of the powerlaw, and $A(V)$ are directly obtained from the fitting, while $E(B-V)$ is obtained from the observations, and $R(V)$ is calculated as $R(V)=A(V)/E(B-V)$. \label{tab:fit_results_dense}",
+            "caption": r"MCMC fitting results for the 2 dense extinction curves: the amplitude $S$ and index $\alpha$ of the power law, the strength $B$, central wavelength $\lambda_0$, width $\gamma_0$ and asymmetry $a$ of the Drude profile, and $A(V)$ are directly obtained from the fitting, while $E(B-V)$ is obtained from the observations, and $R(V)$ is calculated as $R(V)=A(V)/E(B-V)$. \label{tab:fit_results_dense}",
         },
         overwrite=True,
     )
@@ -478,6 +556,7 @@ def compare_AV_lit(ext_path, lit_path, plot_path, starpair_list):
     # plot the literature A(V) values against the calculated values
     fig, ax = plt.subplots(figsize=(6, 6))
     for starpair in starpair_list:
+        print(starpair)
         extdata = ExtData("%s%s_ext.fits" % (ext_path, starpair.lower()))
         red_star = starpair.split("_")[0]
         if red_star in CCM89.index:
@@ -605,5 +684,5 @@ if __name__ == "__main__":
     # table_results(inpath, table_path, good_diffuse, good_dense)
 
     # create plots
-    plot_param_triangle(inpath, plot_path, good_diffuse, good_dense)
+    # plot_param_triangle(inpath, plot_path, good_diffuse, good_dense)
     # compare_AV_lit(inpath, data_path, plot_path, good_diffuse + good_dense)

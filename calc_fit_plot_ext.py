@@ -28,7 +28,7 @@ def calc_fit_plot(starpair_list, path, dense=False, profile="gauss_asym"):
         Whether or not the sightline is dense
 
     profile : string [default="gauss_asym"]
-        Profile to use for the features if dense = True (options are "gauss", "drude", "lorentz", "gauss_asym", "drude_asym", "lorentz_asym")
+        Profile to use for the feature(s) if dense = True (options are "gauss1", "drude1", "lorentz1", "gauss_asym1", "drude_asym1", "lorentz_asym1","gauss2", "drude2", "lorentz2", "gauss_asym2", "drude_asym2", "lorentz_asym2")
 
     Returns
     -------
@@ -438,7 +438,7 @@ if __name__ == "__main__":
         "HD229238_HD214680",
         # "HD294264_HD034759",
     ]
-    # dense = ["HD029647_HD042560", "HD283809_HD003360"]
+    dense_samp = ["HD029647_HD042560", "HD283809_HD003360"]
 
     # calculate and fit the average diffuse extinction curve
     # calc_fit_average(diffuse, path)
@@ -447,7 +447,8 @@ if __name__ == "__main__":
     # calc_fit_plot(diffuse, path)
 
     # calculate, fit and plot all dense extinction curves
-    # calc_fit_plot(dense_samp, path, dense=True, profile="gauss_asym")
+    # calc_fit_plot(dense_samp, path, dense=True, profile="gauss_asym1")
+    # calc_fit_plot(dense_samp, path, dense=True, profile="drude_asym1")
 
     # create more plots
     fs = 18
