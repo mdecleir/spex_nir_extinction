@@ -3,7 +3,9 @@
 
 import numpy as np
 import astropy.units as u
+from astropy.io import fits
 
+from astropy.stats import sigma_clipped_stats
 from astropy.modeling.powerlaws import PowerLaw1D
 from astropy.table import Table
 from matplotlib import pyplot as plt
@@ -17,13 +19,27 @@ from measure_extinction.extdata import ExtData
 
 from dust_extinction.averages import RL85_MWGC, I05_MWAvg, G21_MWAvg
 
+# gamma function (wavelength dependent width, replacing the FWHM)
+def gamma(x, x_o=1, gamma_o=1, asym=1):
+    return 2.0 * gamma_o / (1.0 + np.exp(asym * (x - x_o)))
+
 
 # asymmetric Gaussian
 def gauss_asymmetric(x, scale=1, x_o=1, gamma_o=1, asym=1):
-    gamma = 2.0 * gamma_o / (1.0 + np.exp(asym * (x - x_o)))
-    # gamma is FWHM, so stddev=gamma/(2sqrt(2ln2))
+    # gamma replaces FWHM, so stddev=gamma/(2sqrt(2ln2))
     y = scale * np.exp(
-        -((x - x_o) ** 2) / (2 * (gamma / (2 * np.sqrt(2 * np.log(2)))) ** 2)
+        -((x - x_o) ** 2)
+        / (2 * (gamma(x, x_o, gamma_o, asym) / (2 * np.sqrt(2 * np.log(2)))) ** 2)
+    )
+    return y
+
+
+# "asymmetric" Drude
+def drude_asymmetric(x, scale=1, x_o=1, gamma_o=1, asym=1):
+    y = (
+        scale
+        * (gamma(x, x_o, gamma_o, asym) / x_o) ** 2
+        / ((x / x_o - x_o / x) ** 2 + (gamma(x, x_o, gamma_o, asym) / x_o) ** 2)
     )
     return y
 
@@ -61,18 +77,18 @@ def plot_extinction_curves(inpath, outpath):
         # "HD037022_HD034816",
         # "HD037023_HD034816",
         "HD037061_HD034816",
-        "HD038087_HD034816",
+        "HD038087_HD051283",
         # "HD052721_HD091316",
-        "HD156247_HD031726",
-        "HD166734_HD188209",
+        "HD156247_HD042560",
+        # "HD166734_HD031726",
         "HD183143_HD188209",
         "HD185418_HD034816",
         "HD192660_HD204172",
-        "HD204827_HD204172",
+        "HD204827_HD003360",
         # "HD206773_HD003360",
         "HD229238_HD214680",
         "HD283809_HD003360",
-        "HD294264_HD034759",
+        # "HD294264_HD034759",
     ]
 
     # plot the extinction curves in E(lambda-V)
@@ -87,42 +103,38 @@ def plot_extinction_curves(inpath, outpath):
 
     # specify the offsets and angles for the star names
     offsets = [
-        0,
+        -0.01,
         0.03,
         0.01,
         0.04,
+        0.0,
         0.01,
-        0.01,
-        0.01,
-        0.02,
-        0,
-        0.03,
+        -0.01,
+        0.0,
+        -0.1,
         0.02,
         -0.05,
-        0.04,
-        0.03,
         0.05,
-        0.02,
+        0.01,
+        0.05,
         0.02,
     ]
     angles = [
-        -38,
-        -44,
-        -32,
-        -30,
-        -46,
-        -44,
-        -42,
-        -36,
-        -46,
         -40,
-        -44,
+        -46,
+        -36,
+        -30,
+        -48,
+        -46,
         -42,
         -42,
-        -44,
         -46,
         -46,
-        -38,
+        -42,
+        -48,
+        -46,
+        -46,
+        -46,
     ]
 
     # plot the extinction curves in A(lambda)/A(V)
@@ -132,16 +144,16 @@ def plot_extinction_curves(inpath, outpath):
         alax=True,
         range=[0.76, 5.45],
         spread=True,
-        exclude=["IRS"],
+        exclude=["IRS", "I", "L", "IRAC1", "IRAC2", "WISE1", "WISE2"],
         text_offsets=offsets,
         text_angles=angles,
         pdf=True,
     )
-    ax.set_ylim(-0.1, 4.8)
+    ax.set_ylim(-0.1, 4.15)
     fig.savefig(outpath + "ext_curves_alav.pdf", bbox_inches="tight")
 
 
-def plot_average_curve(inpath, table_path, outpath):
+def plot_average_curve(inpath, outpath):
     """
     Plot the average extinction curve, together with literature curves
 
@@ -149,9 +161,6 @@ def plot_average_curve(inpath, table_path, outpath):
     ----------
     inpath : string
         Path to the data files
-
-    table_path : string
-        Path to the tables
 
     outpath : string
         Path to save the plot
@@ -163,19 +172,9 @@ def plot_average_curve(inpath, table_path, outpath):
     fig, ax = plot_average(
         inpath,
         fitmodel=True,
-        range=[0.77, 5.2],
-        exclude=["IRS"],
+        range=[0.75, 4.9],
+        exclude=["IRS", "BAND"],
         pdf=True,
-    )
-
-    # plot part beyond 4 micron in gray
-    x = ax.get_lines()[3].get_data()[0]
-    y = ax.get_lines()[3].get_data()[1]
-    mask = x > 4.1
-    ax.plot(
-        x[mask],
-        y[mask],
-        color="silver",
     )
 
     # add literature curves
@@ -258,12 +257,8 @@ def plot_average_curve(inpath, table_path, outpath):
             alpha=0.8,
         )
 
-    # zoom the residual plot
-    res_ax = fig.axes[1]
-    res_ax.set_ylim(-0.025, 0.025)
-
     # finalize and save the figure
-    ax.set_ylim(-0.05, 0.6)
+    ax.set_ylim(-0.03, 0.6)
     handles, labels = ax.get_legend_handles_labels()
     ax.legend(
         [handles[i] for i in [0, 2, 1, 3, 4]],
@@ -271,6 +266,117 @@ def plot_average_curve(inpath, table_path, outpath):
         fontsize=18,
     )
     fig.savefig(outpath + "average_ext.pdf", bbox_inches="tight")
+
+
+def plot_ave_res(inpath, outpath):
+    """
+    Plot the residuals of the average curve fit separately
+
+    Parameters
+    ----------
+    inpath : string
+        Path to the data files
+
+    outpath : string
+        Path to save the plot
+
+    Returns
+    -------
+    Plot with the residuals of the average curve fit
+    """
+    # read in the average extinction curve
+    average = ExtData(inpath + "average_ext.fits")
+
+    # plot the residuals
+    fig, ax = plt.subplots(
+        2,
+        figsize=(10, 7),
+        sharex=True,
+        gridspec_kw={
+            "height_ratios": [1, 3],
+            "hspace": 0,
+        },
+    )
+    waves = average.model["waves"]
+    residuals = average.model["residuals"]
+    ax[1].scatter(waves, residuals, s=1.5, color="k")
+
+    # calculate the standard deviation of the residuals in different wavelength ranges
+    ranges = [(0.79, 1.37), (1.4, 1.82), (1.92, 2.54), (2.85, 4.05), (4.55, 4.8)]
+    for range in ranges:
+        mask = (waves > range[0]) & (waves < range[1])
+        mean, median, stddev = sigma_clipped_stats(residuals[mask])
+        ax[1].hlines(
+            y=(stddev, -stddev),
+            xmin=range[0],
+            xmax=range[1],
+            colors="magenta",
+            ls="--",
+            lw=2,
+            zorder=5,
+        )
+
+    # indicate hydrogen lines and jumps
+    ax[1].annotate(
+        "Pa \n jump",
+        xy=(0.85, 0.019),
+        xytext=(0.85, 0.023),
+        fontsize=0.7 * fs,
+        ha="center",
+        va="center",
+        color="blue",
+        arrowprops=dict(arrowstyle="-[, widthB=.5, lengthB=.5", lw=1, color="blue"),
+    )
+    ax[1].annotate(
+        "Br \n jump",
+        xy=(1.46, 0.009),
+        xytext=(1.46, 0.013),
+        fontsize=0.7 * fs,
+        ha="center",
+        va="center",
+        color="blue",
+        arrowprops=dict(arrowstyle="-[, widthB=.55, lengthB=.5", lw=1, color="blue"),
+    )
+
+    lines = [
+        0.9017385,
+        0.9231547,
+        0.9548590,
+        1.0052128,
+        1.0941090,
+        1.282159,
+        1.5264708,
+        1.5443139,
+        1.5560699,
+        1.5704952,
+        1.5884880,
+        1.6113714,
+        1.6411674,
+        1.6811111,
+        1.7366850,
+        2.166120,
+        2.3544810,
+        2.3828230,
+        2.3924675,
+        2.4163852,
+        3.0392022,
+    ]
+
+    ax[1].vlines(x=lines, ymin=-0.017, ymax=0.017, color="blue", lw=0.5, alpha=0.5)
+
+    # add the atmospheric transmission curve
+    hdulist = fits.open("/Users/mdecleir/spex_nir_extinction/data/atran2000.fits")
+    data = hdulist[0].data
+    ax[0].plot(data[0], data[1], color="k", alpha=0.7, lw=0.5)
+
+    # finalize and save the plot
+    ax[1].axhline(ls="-", c="k", alpha=0.5)
+    plt.xlim(0.75, 4.9)
+    plt.ylim(-0.026, 0.026)
+    ax[0].set_ylabel("Atmospheric\ntransmission", fontsize=0.8 * fs)
+    ax[1].set_xlabel(r"$\lambda$ [$\mu m$]", fontsize=fs)
+    ax[1].set_ylabel("residual $A(\lambda)/A(V)$", fontsize=fs)
+    fig.savefig(outpath + "average_res.pdf", bbox_inches="tight")
 
 
 def plot_features(starpair, inpath, outpath):
@@ -297,68 +403,99 @@ def plot_features(starpair, inpath, outpath):
         starpair,
         inpath,
         fitmodel=True,
-        range=[2.4, 4.05],
+        range=[2.2, 4.05],
         exclude=["IRS", "BAND"],
         pdf=True,
     )
 
-    # plot the model components
+    # retrieve the model parameters
     extdata = ExtData("%s%s_ext.fits" % (inpath, starpair.lower()))
+    waves = extdata.model["waves"]
+
+    # for 1 feature
+    (
+        amplitude,
+        x_0,
+        alpha,
+        scale_1,
+        x_1,
+        gamma_1,
+        asym_1,
+        AV,
+    ) = extdata.model["params"]
+
+    # for 2 features
+    # (
+    #     amplitude,
+    #     x_0,
+    #     alpha,
+    #     scale_1,
+    #     x_1,
+    #     gamma_1,
+    #     asym_1,
+    #     scale_2,
+    #     x_2,
+    #     gamma_2,
+    #     asym_2,
+    #     AV,
+    # ) = extdata.model["params"]
 
     # plot the power law
-    print(extdata.model["params"])
+    powerlaw = amplitude * AV * waves ** (-alpha) - AV
     ax.plot(
-        extdata.model["waves"],
-        extdata.model["params"][0]
-        * extdata.model["params"][11]
-        * extdata.model["waves"] ** (-extdata.model["params"][2])
-        - extdata.model["params"][11],
+        waves,
+        powerlaw,
         ls="--",
+        lw=2,
         color="olive",
         alpha=0.6,
         label="power law",
     )
 
     # plot the first feature
-    ax.plot(
-        extdata.model["waves"],
-        extdata.model["params"][0]
-        * extdata.model["params"][11]
-        * extdata.model["waves"] ** (-extdata.model["params"][2])
-        - extdata.model["params"][11]
-        + gauss_asymmetric(
-            extdata.model["waves"],
-            scale=0.02899752 * extdata.model["params"][11],
-            x_o=3.01521119,
-            gamma_o=-0.33911005,
-            asym=-3.39222967,
-        ),
-    )
+    # ax.plot(
+    #     waves,
+    #     powerlaw
+    #     + gauss_asymmetric(
+    #         extdata.model["waves"],
+    #         scale=scale_1 * AV,
+    #         x_o=x_1,
+    #         gamma_o=gamma_1,
+    #         asym=asym_1,
+    #     ),
+    #     ls=":",
+    #     label="Asym. Gauss 1",
+    # )
 
-    # plot the second feature
-    ax.plot(
-        extdata.model["waves"],
-        extdata.model["params"][0]
-        * extdata.model["params"][11]
-        * extdata.model["waves"] ** (-extdata.model["params"][2])
-        - extdata.model["params"][11]
-        + gauss_asymmetric(
-            extdata.model["waves"],
-            scale=0.00916217 * extdata.model["params"][11],
-            x_o=3.44983493,
-            gamma_o=-1.29219461,
-            asym=-23.53014118,
-        ),
-    )
+    # plot the second feature (if applicable)
+    # ax.plot(
+    #     waves,
+    #     powerlaw
+    #     + gauss_asymmetric(
+    #         waves,
+    #         scale=scale_2 * AV,
+    #         x_o=x_2,
+    #         gamma_o=gamma_2,
+    #         asym=asym_2,
+    #     ),
+    #     ls="-.",
+    #     label="Asym. Gauss 2",
+    # )
 
-    # save the figure
+    # zoom the residual plot
+    res_ax = fig.axes[1]
+    res_ax.set_ylim(-0.04, 0.04)
+
+    # finalize and save the figure
+    plt.setp(ax, title="")
+    del ax.texts[0]
+    ax.legend(loc=3)
     fig.savefig(outpath + starpair + "_ext_features.pdf", bbox_inches="tight")
 
 
 if __name__ == "__main__":
     inpath = "/Users/mdecleir/Documents/NIR_ext/Data/"
     outpath = "/Users/mdecleir/spex_nir_extinction/Figures/"
-    table_path = "/Users/mdecleir/spex_nir_extinction/Tables/"
 
     # plotting settings for uniform plots
     fs = 20
@@ -369,5 +506,6 @@ if __name__ == "__main__":
     plt.rc("ytick.major", width=1, size=8)
 
     # plot_extinction_curves(inpath, outpath)
-    # plot_average_curve(inpath, table_path, outpath)
+    plot_average_curve(inpath, outpath)
+    plot_ave_res(inpath, outpath)
     plot_features("HD283809_HD003360", inpath, outpath)
