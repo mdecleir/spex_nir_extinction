@@ -18,6 +18,7 @@ from measure_extinction.plotting.plot_ext import (
 from measure_extinction.extdata import ExtData
 
 from dust_extinction.averages import RL85_MWGC, I05_MWAvg, G21_MWAvg
+from dust_extinction.grain_models import D03, ZDA04, C11, J13
 
 # gamma function (wavelength dependent width, replacing the FWHM)
 def gamma(x, x_o=1, gamma_o=1, asym=1):
@@ -155,7 +156,9 @@ def plot_extinction_curves(inpath, outpath):
 
 def plot_average_curve(inpath, outpath):
     """
-    Plot the average extinction curve, together with literature curves
+    Plot the average extinction curve:
+     - together with literature curves
+     - together with dust grain models
 
     Parameters
     ----------
@@ -167,8 +170,10 @@ def plot_average_curve(inpath, outpath):
 
     Returns
     -------
-    Plot with the average diffuse extinction curve
+    Plots with the average diffuse extinction curve
     """
+    # with literature curves
+    # plot the average extinction curve
     fig, ax = plot_average(
         inpath,
         fitmodel=True,
@@ -229,8 +234,7 @@ def plot_average_curve(inpath, outpath):
     # ax.plot(waves, MA20(waves), lw=1.5, ls="--", label="Maiz Apellaniz+2020")
 
     # average curves from dust_extinction package
-    x = np.arange(0.75, 5.2, 0.01) * u.micron
-
+    x = np.arange(0.75, 5.0, 0.01) * u.micron
     models = [RL85_MWGC, I05_MWAvg, G21_MWAvg]
     styles = ["--", "-.", ":"]
     colors = ["tab:green", "tab:purple", "tab:cyan"]
@@ -263,9 +267,48 @@ def plot_average_curve(inpath, outpath):
     ax.legend(
         [handles[i] for i in [0, 2, 1, 3, 4]],
         [labels[i] for i in [0, 2, 1, 3, 4]],
-        fontsize=18,
+        fontsize=fs * 0.9,
     )
     fig.savefig(outpath + "average_ext.pdf", bbox_inches="tight")
+
+    # with dust grain models
+    # plot the average extinction curve
+    fig, ax = plot_average(
+        inpath,
+        range=[0.75, 4.9],
+        exclude=["IRS", "BAND"],
+        pdf=True,
+    )
+
+    # dust grain models from dust_extinction package
+    models = [D03, ZDA04, C11, J13]
+    modelnames = [
+        "MWRV31",
+        "BARE-GR-S",
+        "MWRV31",
+        "MWRV31",
+    ]
+    styles = [
+        "-",
+        "--",
+        "-.",
+        ":",
+    ]
+    labels = [
+        "Draine (2003)",
+        "Zubko et al. (2004)",
+        "Compiègne et al. (2011)",
+        "Jones et al. (2013)",
+    ]
+    for i, (cmodel, cname) in enumerate(zip(models, modelnames)):
+        ext_model = cmodel(cname)
+        yvals = ext_model(x)
+        ax.plot(x, yvals, lw=1.5, ls=styles[i], label=labels[i])
+
+    # finalize and save the plot
+    ax.set_ylim(-0.03, 0.6)
+    plt.legend(fontsize=fs * 0.9)
+    fig.savefig(outpath + "average_ext_mod.pdf", bbox_inches="tight")
 
 
 def plot_ave_res(inpath, outpath):
