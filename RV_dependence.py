@@ -138,23 +138,35 @@ def plot_rv_dep(
             fmt=".k",
             elinewidth=0.5,
         )
+        xs = np.arange(-1, 3, 0.1)
         ax[j].plot(
-            np.arange(-1, 4, 0.1),
-            slopes[indx] * np.arange(-1, 4, 0.1) + intercepts[indx],
+            xs,
+            slopes[indx] * xs + intercepts[indx],
             color="forestgreen",
             ls="--",
             alpha=0.6,
+            label=r"$%5.3f\, (R_V-3.1) - %5.3f$" % (slopes[indx], intercepts[indx]),
         )
-        rho, p = stats.spearmanr(RVs[:, 0] - 3.1, alavs[indx], nan_policy="omit")
-        ax[j].text(
-            0.97,
-            0.08,
-            r"$\rho =$" + "{:1.2f}".format(rho),
-            fontsize=fs * 0.8,
-            horizontalalignment="right",
-            transform=ax[j].transAxes,
-        )
+
         ax[j].set_ylabel(r"$A(" + "{:1.2f}".format(wave) + "\mu m)/A(" + norm + ")$")
+        ax[j].legend(loc="lower right", fontsize=fs * 0.8)
+
+        # add literature curves
+        # styles = ["--", ":"]
+        # for i, cmodel in enumerate([CCM89, F19]):
+        #     if wave > 3.3:
+        #         continue
+        #     yvals = []
+        #     for xval in xs:
+        #         ext_model = cmodel(Rv=xval + 3.1)
+        #         yvals.append(ext_model(wave * u.micron))
+        #     ax[j].plot(
+        #         xs,
+        #         yvals,
+        #         lw=1.5,
+        #         ls=styles[i],
+        #         alpha=0.8,
+        #     )
 
     # finalize the plot
     plt.xlabel("R(V) - 3.1")
@@ -164,7 +176,7 @@ def plot_rv_dep(
 
 def table_rv_dep(outpath, table_waves, fit_slopes, fit_intercepts, fit_stds, norm="V"):
     """
-    Create tables with the slopes, intercepts and standard deviations at wavelengths "table_waves"
+    Create tables with the slopes, intercepts and standard deviations at wavelengths "table_waves", and the measured and fitted average extinction curve
 
     Parameters
     ----------
@@ -197,10 +209,46 @@ def table_rv_dep(outpath, table_waves, fit_slopes, fit_intercepts, fit_stds, nor
     table_intercepts = fit_intercepts(table_waves)
     table_stds = interpolate.splev(table_waves, fit_stds)
 
+    # obtain the measured average extinction curve
+    average = ExtData(inpath + "average_ext.fits")
+    (ave_waves, exts, exts_unc) = average.get_fitdata(["SpeX_SXD", "SpeX_LXD"])
+    indx = np.argsort(ave_waves)
+    ave_waves = ave_waves[indx].value
+    exts = exts[indx]
+    exts_unc = exts_unc[indx]
+
+    # create wavelength bins and calculate the binned median extinction and uncertainty
+    bin_edges = np.insert(table_waves + 0.025, 0, table_waves[0] - 0.025)
+    meds, edges, indices = stats.binned_statistic(
+        ave_waves,
+        (exts, exts_unc),
+        statistic="median",
+        bins=bin_edges,
+    )
+
+    # obtain the fitted average extinction curve
+    ave_fit = average.model["params"][0] * table_waves ** (-average.model["params"][2])
+
     # create the table
     table = Table(
-        [table_waves, table_slopes, table_intercepts, table_stds],
-        names=("wavelength [micron]", "slope", "intercept", "std"),
+        [
+            table_waves,
+            meds[0],
+            meds[1],
+            ave_fit,
+            table_slopes,
+            table_intercepts,
+            table_stds,
+        ],
+        names=(
+            "wavelength[micron]",
+            "ave",
+            "ave_unc",
+            "ave_fit",
+            "slope",
+            "intercept",
+            "std",
+        ),
     )
 
     # save it in ascii format
@@ -216,21 +264,28 @@ def table_rv_dep(outpath, table_waves, fit_slopes, fit_intercepts, fit_stds, nor
         format="aastex",
         names=(
             r"$\lambda [\micron]$",
+            "ave",
+            "unc",
+            "fit",
             r"$b(\lambda$)",
             r"$a(\lambda$)",
             r"$\sigma(\lambda)$",
         ),
         formats={
             r"$\lambda [\micron]$": "{:.2f}",
+            "ave": "{:.3f}",
+            "unc": "{:.3f}",
+            "fit": "{:.3f}",
             r"$b(\lambda$)": "{:.3f}",
             r"$a(\lambda$)": "{:.3f}",
             r"$\sigma(\lambda)$": "{:.3f}",
         },
         latexdict={
-            "col_align": "cccc",
+            "col_align": "c|ccc|ccc",
             "tabletype": "deluxetable",
-            "caption": r"Parameters of the linear relationship between extinction A($\lambda$)/A(V) and R(V). For every wavelength, the slope $b$, intercept $a$, and standard deviation $\sigma$ are given. \label{tab:RV_dep}",
+            "caption": r"The average diffuse Milky Way extinction curve and parameters of the linear relationship between extinction $A(\lambda)/A(V)$ and $R(V)$. For every wavelength, in columns 2--4 the binned value of the measured average extinction curve, its uncertainty, and the fitted value are given. Columns 5--7 give the slope $b$, intercept $a$, and standard deviation $\sigma$ of the $R(V)$-dependent extinction curve. \label{tab:RV_dep}",
         },
+        fill_values=[("nan", "--")],
         overwrite=True,
     )
 
@@ -338,13 +393,14 @@ def plot_RV_lit(outpath, fit_slopes, fit_intercepts):
     Plot with the R(V)-dependent extinction curve for different R(V) values
     """
     waves = np.arange(0.8, 4.01, 0.01)
-    fig, ax = plt.subplots(figsize=(10, 8))
+    fig, ax = plt.subplots(figsize=(10, 9))
 
-    for RV in [2.0, 3.1, 5.5]:
+    for i, RV in enumerate([2.0, 3.1, 5.5]):
         # plot the extinction curve from this work
+        offset = 0.08 * i
         slopes = interpolate.splev(waves, fit_slopes)
         alav = fit_intercepts(waves) + slopes * (RV - 3.1)
-        (line,) = ax.plot(waves, alav, label="R(V) = " + str(RV))
+        (line,) = ax.plot(waves, alav + offset, lw=1.5, label="R(V) = " + str(RV))
 
         # plot the literature curves
         color = line.get_color()
@@ -359,35 +415,34 @@ def plot_RV_lit(outpath, fit_slopes, fit_intercepts):
             yvals = ext_model(waves[indxs] * u.micron)
             ax.plot(
                 waves[indxs],
-                yvals,
-                lw=1,
+                yvals + offset,
+                lw=1.5,
                 color=color,
                 ls=styles[i],
                 alpha=0.8,
             )
 
+    # add text
+    ax.text(3.45, 0.03, "R(V) = 2.0", fontsize=0.8 * fs, color="tab:blue")
+    ax.text(3.45, 0.13, "R(V) = 3.1", fontsize=0.8 * fs, color="tab:orange")
+    ax.text(3.45, 0.26, "R(V) = 5.5", fontsize=0.8 * fs, color="tab:green")
+
     # finalize and save the plot
     ax.set_xlabel(r"$\lambda$ [$\mu m$]")
-    ax.set_ylabel(r"$A(\lambda)/A(V)$")
+    ax.set_ylabel(r"$A(\lambda)/A(V)$ + offset")
     ax.set_xlim(0.75, 4.05)
-    ax.set_ylim(0.0, 0.7)
+    ax.set_ylim(0.0, 0.9)
     handles = [
-        Line2D([0], [0], color="tab:blue", lw=2),
-        Line2D([0], [0], color="tab:orange", lw=2),
-        Line2D([0], [0], color="tab:green", lw=2),
-        Line2D([0], [0], color="gray"),
-        Line2D([0], [0], color="gray", ls="--"),
-        Line2D([0], [0], color="gray", ls=":"),
+        Line2D([0], [0], color="k", lw=1.5),
+        Line2D([0], [0], color="k", lw=1.5, ls="--"),
+        Line2D([0], [0], color="k", lw=1.5, ls=":"),
     ]
     labels = [
-        "R(V) = 2.0",
-        "R(V) = 3.1",
-        "R(V) = 5.5",
         "this work",
         "Cardelli et al. (1989)",
         "Fitzpatrick et al. (2019)",
     ]
-    plt.legend(handles, labels)
+    plt.legend(handles, labels, fontsize=0.8 * fs)
     plt.savefig(outpath + "RV_lit.pdf", bbox_inches="tight")
 
 
@@ -451,7 +506,7 @@ def fit_plot_rv_dep(inpath, plot_path, table_path, starpair_list, norm="V"):
         stds[j] = std
 
     # plot A(lambda)/A(V) vs. R(V) at certain wavelengths
-    plot_waves = [0.8492674, 1.6499686, 2.4502702, 3.5002365, 4.704127]
+    plot_waves = [0.89864296, 1.6499686, 2.4502702, 3.5002365, 4.697073]
     plot_rv_dep(
         plot_path,
         RVs,
@@ -465,14 +520,14 @@ def fit_plot_rv_dep(inpath, plot_path, table_path, starpair_list, norm="V"):
     )
 
     # plot the slopes, intercepts and standard deviations vs. wavelength
-    # color the data points at wavelengths > 4.03 grey
+    # color the data points at wavelengths > 4.03 gray
     fig, ax = plt.subplots(3, figsize=(9, 9), sharex=True)
     short_waves = waves < 4.03
     ax[0].scatter(waves[short_waves], slopes[short_waves], color="k", s=0.3)
-    ax[0].scatter(waves[~short_waves], slopes[~short_waves], color="grey", s=0.3)
+    ax[0].scatter(waves[~short_waves], slopes[~short_waves], color="gray", s=0.3)
     ax[1].scatter(waves, intercepts, color="k", s=0.3)
     ax[2].scatter(waves[short_waves], stds[short_waves], color="k", s=0.3)
-    ax[2].scatter(waves[~short_waves], stds[~short_waves], color="grey", s=0.3)
+    ax[2].scatter(waves[~short_waves], stds[~short_waves], color="gray", s=0.3)
     for wave in plot_waves:
         indx = np.abs(waves - wave).argmin()
         ax[0].scatter(wave, slopes[indx], color="lime", s=50, marker="x", zorder=3)
@@ -558,14 +613,14 @@ if __name__ == "__main__":
         "HD037022_HD034816",
         "HD037023_HD034816",
         "HD037061_HD034816",
-        "HD038087_HD034816",
+        "HD038087_HD051283",
         "HD052721_HD091316",
-        "HD156247_HD031726",
-        "HD166734_HD188209",
+        "HD156247_HD042560",
+        "HD166734_HD031726",
         "HD183143_HD188209",
         "HD185418_HD034816",
         "HD192660_HD204172",
-        "HD204827_HD204172",
+        "HD204827_HD003360",
         "HD206773_HD003360",
         "HD229238_HD214680",
         "HD283809_HD003360",
@@ -573,18 +628,20 @@ if __name__ == "__main__":
     ]
     # list the problematic star pairs
     flagged = [
-        "HD014422_HD214680",
         "HD014250_HD042560",
-        "HD037023_HD034816",
+        "HD014422_HD214680",
         "HD034921_HD214680",
         "HD037020_HD034816",
         "HD037022_HD034816",
+        "HD037023_HD034816",
         "HD052721_HD091316",
+        "HD166734_HD031726",
         "HD206773_HD003360",
+        "HD294264_HD034759",
     ]
 
     # settings for the plotting
-    fs = 18
+    fs = 20
     plt.rc("font", size=fs)
     plt.rc("xtick", direction="in", labelsize=fs * 0.8)
     plt.rc("ytick", direction="in", labelsize=fs * 0.8)
@@ -599,6 +656,9 @@ if __name__ == "__main__":
 
     # fit and plot the RV dependence when normalizing to 1 micron instead of to the V-band
     fit_plot_rv_dep(inpath, plot_path, table_path, good_stars, norm=1)
+
+    # ------------------------------------------------------------------
+    # EXTRA (eventually not used in the paper)
 
     # add CCM89 1/RV dependent relation (can only be used with 1/RV)
     # waves_CCM89 = [0.7, 0.9, 1.25, 1.6, 2.2, 3.4]
