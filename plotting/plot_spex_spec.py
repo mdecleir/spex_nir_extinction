@@ -29,29 +29,29 @@ def plot_comp_spectra(inpath, outpath):
     # specify the offsets and angles for the star names
     offsets = [
         0.2,
+        0.18,
+        0.13,
+        0.1,
         0.15,
-        0.11,
-        0.1,
         0.12,
-        0.06,
         0.1,
-        0.08,
+        0.1,
         0.08,
         0.28,
         0.23,
         0.15,
         0.11,
-        0.12,
+        0.14,
         0.25,
     ]
-    angles = [12, 10, 8, 8, 7, 7, 5, 10, 10, 18, 15, 12, 12, 14, 16]
+    angles = [12, 10, 8, 8, 7, 7, 5, 10, 10, 18, 17, 12, 12, 14, 16]
 
     # plot the spectra
     fig, ax = plot_multi_spectra(
         stars,
         inpath,
         mlam4=True,
-        range=[0.75, 5.6],
+        range=[0.75, 5.55],
         norm_range=[0.95, 1.05],
         spread=True,
         exclude=["IRS", "I", "L", "IRAC1", "IRAC2", "WISE1", "WISE2"],
@@ -64,8 +64,8 @@ def plot_comp_spectra(inpath, outpath):
     # annotate the main sequence and giant star spectra with text
     ax.annotate(
         "main sequence",
-        xy=(5.37, 3.7),
-        xytext=(5.5, 3.7),
+        xy=(5.27, 3.7),
+        xytext=(5.4, 3.7),
         fontsize=fs,
         ha="center",
         va="center",
@@ -74,15 +74,16 @@ def plot_comp_spectra(inpath, outpath):
     )
     ax.annotate(
         "giants and supergiants",
-        xy=(5.37, 8.7),
-        xytext=(5.5, 8.7),
+        xy=(5.27, 8.6),
+        xytext=(5.4, 8.6),
         fontsize=fs,
         ha="center",
         va="center",
         rotation=-90,
-        arrowprops=dict(arrowstyle="-[, widthB=8, lengthB=1.8", lw=3),
+        arrowprops=dict(arrowstyle="-[, widthB=7.5, lengthB=1.8", lw=3),
     )
 
+    ax.set_ylim(0.5, 10.3)
     fig.savefig(outpath + "comp_stars.pdf", bbox_inches="tight")
 
 
@@ -108,30 +109,30 @@ def plot_red_spectra(inpath, outpath):
 
     # specify the offsets and angles for the star names
     offsets = [
-        0.09,
+        0.19,
         0.22,
         0.21,
         0.15,
         0.22,
         0.20,
         0.2,
+        0.21,
+        0.21,
+        0.21,
+        0.2,
         0.17,
-        0.22,
-        0.22,
-        0.18,
-        0.18,
         0.24,
         0.26,
         0.24,
     ]
-    angles = [15, 17, 19, 17, 25, 25, 30, 28, 33, 32, 32, 40, 46, 50, 60]
+    angles = [16, 17, 19, 17, 25, 25, 30, 30, 33, 32, 32, 40, 46, 50, 60]
 
     # plot the spectra
     fig, ax = plot_multi_spectra(
         stars,
         inpath,
         mlam4=True,
-        range=[0.75, 5.5],
+        range=[0.75, 5.4],
         norm_range=[0.95, 1.05],
         spread=True,
         exclude=["IRS", "STIS_Opt", "I", "L", "IRAC1", "IRAC2", "WISE1", "WISE2"],
@@ -160,8 +161,8 @@ def plot_unused_spectra(inpath, outpath):
         "HD014422",
     ]
     # specify the offsets and angles for the star names
-    offsets = [0.17, 0.18, 0.07, 0.21, 0.12, -0.08, 0.16, 0.22, 0.35, 0.22]
-    angles = [9, 18, 21, 21, 23, 28, 33, 37, 36, 37]
+    offsets = [0.18, 0.25, 0.08, 0.25, 0.14, -0.03, 0.19, 0.22, 0.35, 0.25]
+    angles = [11, 19, 22, 22, 25, 30, 35, 39, 37, 39]
     fig, ax = plot_multi_spectra(
         stars,
         inpath,
@@ -176,7 +177,8 @@ def plot_unused_spectra(inpath, outpath):
         pdf=True,
         outname="bad_stars.pdf",
     )
-    ax.set_ylim(0.6, 12)
+    ax.set_ylim(0.6, 12.5)
+    fig.set_figheight(14)
     fig.savefig(outpath + "bad_stars.pdf", bbox_inches="tight")
 
 
