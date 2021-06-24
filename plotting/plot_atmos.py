@@ -11,10 +11,10 @@ def plot_atmos(path):
 
     fig, ax = plt.subplots(figsize=(10, 5))
     plt.plot(data[0], data[1], color="k", alpha=0.8, lw=0.6)
-    plt.axvspan(1.354, 1.411, alpha=0.6, color="red", zorder=3)
-    plt.axvspan(1.805, 1.947, alpha=0.6, color="red", zorder=3)
-    plt.axvspan(2.522, 2.875, alpha=0.6, color="red", zorder=3)
-    plt.axvspan(4.014, 4.594, alpha=0.6, color="red", zorder=3)
+    plt.axvspan(1.347, 1.415, alpha=0.6, color="red", zorder=3)
+    plt.axvspan(1.798, 1.949, alpha=0.6, color="red", zorder=3)
+    plt.axvspan(2.514, 2.880, alpha=0.6, color="red", zorder=3)
+    plt.axvspan(4.000, 4.594, alpha=0.6, color="red", zorder=3)
 
     plt.xlim(0.78, 5.55)
     plt.ylim(0.0, 1.01)
