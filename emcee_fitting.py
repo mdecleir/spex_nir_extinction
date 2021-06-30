@@ -78,7 +78,7 @@ class EmceeOpt(Optimization):
         ndim = len(initval)
         nwalkers = 2 * ndim
         # might need more walkers
-        pos = initval + 1e-4 * np.random.randn(nwalkers, ndim)
+        pos = initval + 1e-2 * np.random.randn(nwalkers, ndim)
 
         # ensure all the walkers start within the bounds
         model = fargs[0]
