@@ -12,7 +12,9 @@ from fit_spex_ext import fit_spex_ext, fit_features_ext, fit_features_spec
 
 
 # function to calculate, fit and plot all extinction curves
-def calc_fit_plot(starpair_list, path, dense=False, profile="gauss_asym"):
+def calc_fit_plot(
+    starpair_list, path, dense=False, profile="gauss_asym", bootstrap=False, fixed=False
+):
     """
     Calculate, fit and plot the extinction curve for all star pairs in "starpair_list"
 
@@ -30,6 +32,12 @@ def calc_fit_plot(starpair_list, path, dense=False, profile="gauss_asym"):
     profile : string [default="gauss_asym"]
         Profile to use for the feature(s) if dense = True (options are "gauss1", "drude1", "lorentz1", "gauss_asym1", "drude_asym1", "lorentz_asym1","gauss2", "drude2", "lorentz2", "gauss_asym2", "drude_asym2", "lorentz_asym2")
 
+    bootstrap : boolean [default=False]
+        Whether or not to do a quick bootstrap fitting to get more realistic uncertainties for the fitting results
+
+    fixed : boolean [default=False]
+        Whether or not to add a fixed feature around 3 micron (for diffuse sightlines)
+
     Returns
     -------
     Calculates, saves, fits and plots the extinction curve
@@ -43,7 +51,14 @@ def calc_fit_plot(starpair_list, path, dense=False, profile="gauss_asym"):
         calc_extinction(redstar, compstar, path)
 
         # fit the extinction curve
-        fit_spex_ext(starpair, path, dense=dense, profile=profile)
+        fit_spex_ext(
+            starpair,
+            path,
+            dense=dense,
+            profile=profile,
+            bootstrap=bootstrap,
+            fixed=fixed,
+        )
 
         # plot the extinction curve
         plot_extinction(
@@ -56,7 +71,7 @@ def calc_fit_plot(starpair_list, path, dense=False, profile="gauss_asym"):
         )
 
 
-def calc_fit_average(starpair_list, path):
+def calc_fit_average(starpair_list, path, fixed=False):
     """
     Calculate and fit the average extinction curve
 
@@ -65,18 +80,32 @@ def calc_fit_average(starpair_list, path):
     starpair_list : list of strings
         List of star pairs for which to calculate and fit the average extinction curve, in the format "reddenedstarname_comparisonstarname" (no spaces)
 
-       path : string
-           Path to the data files
+    path : string
+        Path to the data files
+
+
+    fixed : boolean [default=False]
+        Whether or not to add a fixed feature around 3 micron
 
     Returns
     -------
     Calculates, saves and fits the average extinction curve (output: path/average_ext.fits)
     """
+    # mask wavelength regions at the edges
+    mask = [
+        (0.805, 0.807),
+        (1.34, 1.344),
+        (1.41, 1.42),
+        (1.949, 1.953),
+        (2.9, 2.908),
+        (3.996, 4.01),
+    ]
+
     # calculate the average extinction curve
-    calc_ave_ext(starpair_list, path, min_number=5)
+    calc_ave_ext(starpair_list, path, min_number=5, mask=mask)
 
     # fit the average extinction curve
-    fit_spex_ext("average", path, exclude=(4.1, 6))
+    fit_spex_ext("average", path, fixed=fixed)
 
 
 def fit_plot_features_spectrum(star, path):
@@ -96,24 +125,20 @@ def fit_plot_features_spectrum(star, path):
     Plot with the continuum-subtracted spectrum and the fitted models
     """
     # fit the features
-    waves, fluxes, results = fit_features_spec(star, path)
+    waves, fluxes, npts, results = fit_features_spec(star, path)
 
     # plot the data
     fig, ax = plt.subplots(
         2, 1, figsize=(8, 6), sharex=True, gridspec_kw={"height_ratios": [6, 1]}
     )
+    fluxes[npts == 0] = np.nan
     ax[0].plot(waves, fluxes, color="k", lw=0.5, alpha=0.7)
 
     # plot the fitted models
-    # Gaussians
-    ax[0].plot(
-        waves,
-        results[0](waves),
-        lw=2,
-        label="2 Gaussians",
-    )
+    # 2 Gaussians
+    ax[0].plot(waves, results[0](waves), lw=2, label="2 Gaussians")
 
-    # Asymmetric Gaussians (with the two individual profiles)
+    # 2 asymmetric Gaussians (with the two individual profiles)
     ax[0].plot(
         waves,
         results[3](waves),
@@ -123,7 +148,7 @@ def fit_plot_features_spectrum(star, path):
     ax[0].plot(waves, results[3][0](waves), color="C1", lw=1, ls="--")
     ax[0].plot(waves, results[3][1](waves), color="C1", lw=1, ls="--")
 
-    # Drudes
+    # 2 Drudes
     ax[0].plot(
         waves,
         results[1](waves),
@@ -132,7 +157,7 @@ def fit_plot_features_spectrum(star, path):
         label="2 Drudes",
     )
 
-    # Asymmetric Drudes
+    # 2 asymmetric Drudes
     ax[0].plot(
         waves,
         results[4](waves),
@@ -141,7 +166,7 @@ def fit_plot_features_spectrum(star, path):
         label="2 mod. Drudes",
     )
 
-    # Lorentzians
+    # 2 Lorentzians
     ax[0].plot(
         waves,
         results[2](waves),
@@ -150,13 +175,22 @@ def fit_plot_features_spectrum(star, path):
         label="2 Lorentzians",
     )
 
-    # Asymmetric Lorentzians
+    # 2 asymmetric Lorentzians
     ax[0].plot(
         waves,
         results[5](waves),
         ls=":",
         lw=1,
         label="2 mod. Lorentzians",
+    )
+
+    # 1 asymmetric Drude
+    ax[0].plot(
+        waves,
+        results[6](waves),
+        ls="-.",
+        lw=1,
+        label="1 mod. Drude",
     )
 
     # finish the upper plot
@@ -168,6 +202,7 @@ def fit_plot_features_spectrum(star, path):
 
     # plot the residuals (for the best fitting model)
     ax[1].scatter(waves, results[3](waves) - fluxes, s=0.7, color="C1")
+    ax[1].set_ylim(-1e-13, 1e-13)
     ax[1].axhline(ls="--", c="k", alpha=0.5)
     ax[1].set_ylabel("residual")
 
@@ -206,7 +241,7 @@ def fit_plot_features_ext(starpair, path):
     ax[0].plot(waves, exts, color="k", lw=0.5, alpha=0.7)
 
     # plot the fitted models
-    # Gaussians
+    # 2 Gaussians
     ax[0].plot(
         waves,
         results[0](waves),
@@ -214,7 +249,7 @@ def fit_plot_features_ext(starpair, path):
         label="2 Gaussians",
     )
 
-    # Asymmetric Gaussians (with the two individual profiles)
+    # 2 asymmetric Gaussians (with the two individual profiles)
     ax[0].plot(
         waves,
         results[3](waves),
@@ -224,7 +259,7 @@ def fit_plot_features_ext(starpair, path):
     ax[0].plot(waves, results[3][0](waves), color="C1", lw=1, ls="--")
     ax[0].plot(waves, results[3][1](waves), color="C1", lw=1, ls="--")
 
-    # Drudes
+    # 2 Drudes
     ax[0].plot(
         waves,
         results[1](waves),
@@ -233,7 +268,7 @@ def fit_plot_features_ext(starpair, path):
         label="2 Drudes",
     )
 
-    # Asymmetric Drudes
+    # 2 asymmetric Drudes
     ax[0].plot(
         waves,
         results[4](waves),
@@ -242,7 +277,7 @@ def fit_plot_features_ext(starpair, path):
         label="2 mod. Drudes",
     )
 
-    # Lorentzians
+    # 2 Lorentzians
     ax[0].plot(
         waves,
         results[2](waves),
@@ -251,7 +286,7 @@ def fit_plot_features_ext(starpair, path):
         label="2 Lorentzians",
     )
 
-    # Asymmetric Lorentzians
+    # 2 asymmetric Lorentzians
     ax[0].plot(
         waves,
         results[5](waves),
@@ -404,27 +439,19 @@ if __name__ == "__main__":
     # define the path of the data files
     path = "/Users/mdecleir/Documents/NIR_ext/Data/"
 
-    # # read the list of all star pairs
-    # table = pd.read_table("red-comp.list", comment="#")
-    # redstars = table["reddened"]
-    # compstars = table["comparison"]
-    # starpair_list = []
-    # for redstar, compstar in zip(redstars, compstars):
-    #     starpair_list.append(redstar + "_" + compstar)
-
     # define the diffuse and dense sub-samples
     diffuse = [
         "BD+56d524_HD034816",
         "HD013338_HD031726",
-        # "HD014250_HD042560",
+        # "HD014250_HD031726",
         # "HD014422_HD214680",
-        "HD014956_HD188209",
+        "HD014956_HD214680",
         "HD017505_HD214680",
         "HD029309_HD042560",
         # "HD034921_HD214680",
         # "HD037020_HD034816",
         # "HD037022_HD034816",
-        # "HD037023_HD034816",
+        # "HD037023_HD036512",
         "HD037061_HD034816",
         "HD038087_HD051283",
         # "HD052721_HD091316",
@@ -432,40 +459,49 @@ if __name__ == "__main__":
         # "HD166734_HD031726",
         "HD183143_HD188209",
         "HD185418_HD034816",
-        "HD192660_HD204172",
+        "HD192660_HD214680",
         "HD204827_HD003360",
-        # "HD206773_HD003360",
+        # "HD206773_HD047839",
         "HD229238_HD214680",
-        # "HD294264_HD034759",
+        # "HD294264_HD051283",
     ]
-    dense_samp = ["HD029647_HD042560", "HD283809_HD003360"]
+
+    dense_samp = ["HD029647_HD034759", "HD283809_HD003360"]
+
+    # calculate, fit and plot all diffuse extinction curves
+    # calc_fit_plot(diffuse, path, bootstrap=True)
+
+    # fit all diffuse sightlines with a fixed feature
+    # calc_fit_plot(diffuse, path, bootstrap=True, fixed=True)
 
     # calculate and fit the average diffuse extinction curve
     # calc_fit_average(diffuse, path)
 
-    # calculate, fit and plot all diffuse extinction curves
-    # calc_fit_plot(diffuse, path)
+    # calculate and fit the average diffuse extinction curve with a fixed feature
+    # calc_fit_average(diffuse, path, fixed=True)
 
     # calculate, fit and plot all dense extinction curves
-    # calc_fit_plot(dense_samp, path, dense=True, profile="gauss_asym1")
-    # calc_fit_plot(dense_samp, path, dense=True, profile="drude_asym1")
+    # calc_fit_plot(dense_samp, path, dense=True, profile="drude_asym1", bootstrap=True)
 
     # create more plots
-    fs = 18
-    plt.rc("font", size=fs)
-    plt.rc("axes", lw=1)
-    plt.rc("xtick", direction="in", labelsize=fs * 0.8)
-    plt.rc("ytick", direction="in", labelsize=fs * 0.8)
-    plt.rc("xtick.major", width=1, size=8)
-    plt.rc("ytick.major", width=1, size=8)
-
-    # plot all residuals in one figure
-    # plot_residuals(starpair_list)
+    # fs = 18
+    # plt.rc("font", size=fs)
+    # plt.rc("axes", lw=1)
+    # plt.rc("xtick", direction="in", labelsize=fs * 0.8)
+    # plt.rc("ytick", direction="in", labelsize=fs * 0.8)
+    # plt.rc("xtick.major", width=1, size=8)
+    # plt.rc("ytick.major", width=1, size=8)
 
     # ------------------------------------------------------------------
     # EXTRA (eventually not used in the paper)
+    # plot all residuals in one figure
+    # plot_residuals(starpair_list)
+
     # fit features from the spectrum instead of the extinction curve
     # fit_plot_features_spectrum("HD283809", path)
 
     # fit features from the continuum-subtracted extinction curve
     # fit_plot_features_ext("HD283809_HD003360", path)
+
+    # fit ice feature with an assymmetric Gaussian
+    # calc_fit_plot(dense_samp, path, dense=True, profile="gauss_asym1")
