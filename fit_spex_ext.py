@@ -60,7 +60,14 @@ def lorentz_asymmetric(x, scale=1, x_o=1, gamma_o=1, asym=1):
     return y
 
 
-def fit_function(dattype="elx", functype="pow", dense=False, profile="gauss_asym"):
+def fit_function(
+    dattype="elx",
+    functype="pow",
+    dense=False,
+    profile="gauss_asym",
+    fixed=False,
+    AV_guess=3,
+):
     """
     Define the fitting function
 
@@ -73,10 +80,16 @@ def fit_function(dattype="elx", functype="pow", dense=False, profile="gauss_asym
         Fitting function type ("pow" for powerlaw or "pol" for polynomial)
 
     dense : boolean [default=False]
-        Whether or not to fit the features around 3 and 3.4 micron
+        Whether or not to fit the feature around 3 micron
 
     profile : string [default="gauss_asym"]
         Profile to use for the features if dense = True (options are "gauss", "drude", "lorentz", "gauss_asym", "drude_asym", "lorentz_asym")
+
+    fixed : boolean [default=False]
+        Whether or not to add a fixed feature around 3 micron (for diffuse sightlines)
+
+    AV_guess : float [default=3]
+        Initial guess for A(V)
 
     Returns
     -------
@@ -96,54 +109,45 @@ def fit_function(dattype="elx", functype="pow", dense=False, profile="gauss_asym
 
     # add profiles for the features if requested
     if dense:
-        # func += Drude1D(
-        #     x_0=3.05,
-        #     fwhm=0.6,
-        #     bounds={"fwhm": (0.5, 1)},
-        # )
-
-        # def drude_modified(x, scale=1, x_o=1, gamma_o=1, asym=1):
-        #     gamma = 2.0 * gamma_o / (1.0 + np.exp(asym * (x - x_o)))
-        #     y = (
-        #         scale
-        #         * ((gamma / x_o) ** 2)
-        #         / ((x / x_o - x_o / x) ** 2 + (gamma / x_o) ** 2)
-        #     )
-        #     return y
-        #
-        # Drude_modified_model = custom_model(drude_modified)
-        # func += Drude_modified_model(x_o=3.05, gamma_o=0.3)
-
-        # func += Drude_modified_model(
-        #     x_o=3.0146054034063385,
-        #     gamma_o=0.4780290123691583,
-        #     asym=-3.3249381815320094,
-        #     fixed={"x_o": True, "gamma_o": True, "asym": True},
-        # )
-
         # define different profiles
+        # 1 Gaussian (stddev=FWHM/(2sqrt(2ln2)))
+        gauss1 = Gaussian1D(mean=3, stddev=0.13, bounds={"stddev": (0.1, 0.2)})
+
         # 2 Gaussians (stddev=FWHM/(2sqrt(2ln2)))
-        gauss = Gaussian1D(
+        gauss2 = Gaussian1D(
             mean=3, stddev=0.13, bounds={"stddev": (0.12, 0.16)}
         ) + Gaussian1D(
             mean=3.4, stddev=0.14, bounds={"mean": (3.41, 3.45), "stddev": (0.14, 0.2)}
         )
 
+        # 1 Drude
+        drude1 = Drude1D(x_0=3, fwhm=0.3, bounds={"fwhm": (0.2, 0.5)})
+
         # 2 Drudes
-        drude = Drude1D(x_0=3, fwhm=0.3) + Drude1D(
+        drude2 = Drude1D(x_0=3, fwhm=0.3) + Drude1D(
             x_0=3.4, fwhm=0.15, bounds={"x_0": (3.35, 3.43), "fwhm": (0.14, 0.3)}
         )
 
+        # 1 Lorentzian
+        lorentz1 = Lorentz1D(x_0=3, fwhm=0.3, bounds={"x_0": (2.99, 3.1)})
+
         # 2 Lorentzians
-        lorentz = Lorentz1D(
+        lorentz2 = Lorentz1D(
             x_0=3, fwhm=0.3, bounds={"x_0": (2.99, 3.1), "fwhm": (0.28, 0.4)}
         ) + Lorentz1D(
             x_0=3.4, fwhm=0.15, bounds={"x_0": (3.35, 3.43), "fwhm": (0.14, 0.3)}
         )
 
-        # 2 asymmetric Gaussians
+        # 1 asymmetric Gaussian
         Gaussian_asym = custom_model(gauss_asymmetric)
-        gauss_asym = Gaussian_asym(
+        gauss_asym1 = Gaussian_asym(
+            x_o=3,
+            gamma_o=0.4,
+            bounds={"x_o": (2.9, 3.1), "gamma_o": (0.35, 2), "asym": (-100, 100)},
+        )
+
+        # 2 asymmetric Gaussians
+        gauss_asym2 = Gaussian_asym(
             x_o=3,
             gamma_o=0.3,
             bounds={"x_o": (2.99, 3.04), "gamma_o": (0.28, 0.5), "asym": (-10, 10)},
@@ -158,45 +162,63 @@ def fit_function(dattype="elx", functype="pow", dense=False, profile="gauss_asym
             },
         )
 
-        # 2 "asymmetric" Drudes
+        # 1 "asymmetric" Drude
         Drude_asym = custom_model(drude_asymmetric)
-        drude_asym = Drude_asym(x_o=3, gamma_o=0.3) + Drude_asym(
+        drude_asym1 = Drude_asym(
+            x_o=3.0,
+            gamma_o=0.3,
+            bounds={
+                "scale": (0, 2),
+                "x_o": (2.5, 3.5),
+                "gamma_o": (-2, 2),
+                "asym": (-50, 50),
+            },
+        )
+
+        # 2 "asymmetric" Drudes
+        drude_asym2 = Drude_asym(x_o=3, gamma_o=0.3) + Drude_asym(
             x_o=3.4, gamma_o=0.15, bounds={"x_o": (3.35, 3.45)}
         )
 
-        # 2 asymmetric Lorentzians
+        # 1 asymmetric Lorentzian
         Lorentzian_asym = custom_model(lorentz_asymmetric)
-        lorentz_asym = Lorentzian_asym(x_o=3, gamma_o=0.3) + Lorentzian_asym(
+        lorentz_asym1 = Lorentzian_asym(x_o=3, gamma_o=0.3, bounds={"x_o": (2.95, 3.1)})
+
+        # 2 asymmetric Lorentzians
+        lorentz_asym2 = Lorentzian_asym(x_o=3, gamma_o=0.3) + Lorentzian_asym(
             x_o=3.4, gamma_o=0.15
         )
 
         profiles = {
-            "gauss": gauss,
-            "drude": drude,
-            "lorentz": lorentz,
-            "gauss_asym": gauss_asym,
-            "drude_asym": drude_asym,
-            "lorentz_asym": lorentz_asym,
+            "gauss1": gauss1,
+            "drude1": drude1,
+            "lorentz1": lorentz1,
+            "gauss_asym1": gauss_asym1,
+            "drude_asym1": drude_asym1,
+            "lorentz_asym1": lorentz_asym1,
+            "gauss2": gauss2,
+            "drude2": drude2,
+            "lorentz2": lorentz2,
+            "gauss_asym2": gauss_asym2,
+            "drude_asym2": drude_asym2,
+            "lorentz_asym2": lorentz_asym2,
         }
         func += profiles[profile]
 
-        # func += Gaussian_asym(x_o=3, gamma_o=0.3) + Gaussian_asym(x_o=3.4, gamma_o=0.4)
-
-        # func += Gaussian_asym(
-        #     x_o=3.011498634873138,
-        #     gamma_o=-0.33575327133587224,
-        #     asym=-3.9652666570924633,
-        #     fixed={"x_o": True, "gamma_o": True, "asym": True},
-        # ) + Gaussian_asym(
-        #     x_o=3.5278583234132412,
-        #     gamma_o=-1.3852846071334977,
-        #     asym=-11.262827694055785,
-        #     fixed={"x_o": True, "gamma_o": True, "asym": True},
-        # )
+    if fixed:
+        # fit a fixed feature for diffuse sightlines
+        Drude_asym = custom_model(drude_asymmetric)
+        func += Drude_asym(
+            x_o=3.017745449,
+            gamma_o=0.462600317,
+            asym=-2.865700308,
+            bounds={"scale": (0, 2)},
+            fixed={"x_o": True, "gamma_o": True, "asym": True},
+        )
 
     # convert the function from A(lambda)/A(V) to E(lambda-V)
     if dattype == "elx":
-        func = func | AxAvToExv()
+        func = func | AxAvToExv(Av=AV_guess)
 
     return func
 
@@ -235,13 +257,13 @@ def fit_features_spec(star, path):
         star,
         path,
         mlam4=True,
-        range=[2, 4],
+        range=[2, 4.5],
         exclude=["IRS", "STIS_Opt"],
     )
 
     # fit the continuum reference points with a straight line
     ref_waves = [2.4, 3.6]
-    fluxes = [3.333e-12, 4.054e-12]
+    fluxes = [3.33268e-12, 4.053e-12]
     func = Linear1D()
     fit = LinearLSQFitter()
     fit_result = fit(func, ref_waves, fluxes)
@@ -281,23 +303,41 @@ def fit_features_spec(star, path):
         x_o=3.4, gamma_o=0.15, fixed={"x_o": True}
     )
 
-    profiles = [gauss, drude, lorentz, gauss_asym, drude_asym, lorentz_asym]
+    # 1 asymmetric Drude
+    drude_asym1 = Drude_asym(x_o=3, gamma_o=0.3)
+
+    profiles = [
+        gauss,
+        drude,
+        lorentz,
+        gauss_asym,
+        drude_asym,
+        lorentz_asym,
+        drude_asym1,
+    ]
 
     # fit the different profiles
     fit2 = LevMarLSQFitter()
     results = []
-    mask = (waves > 2.4) & (waves < 3.6) & (npts > 0)
-    waves = waves[mask]
-    fluxes = fluxes[mask]
-    flux_unc = flux_unc[mask]
+    mask1 = (waves > 2.4) & (waves < 3.6)
+    mask2 = mask1 * (npts > 0)
 
     for profile in profiles:
-        fit_result = fit2(profile, waves, fluxes, weights=1 / flux_unc, maxiter=10000)
+        fit_result = fit2(
+            profile,
+            waves[mask2],
+            fluxes[mask2],
+            weights=1 / flux_unc[mask2],
+            maxiter=10000,
+        )
         results.append(fit_result)
         print(fit_result)
-        print("Chi2", np.sum(((fluxes - fit_result(waves)) / flux_unc) ** 2))
+        print(
+            "Chi2",
+            np.sum(((fluxes[mask2] - fit_result(waves[mask2])) / flux_unc[mask2]) ** 2),
+        )
 
-    return waves, fluxes, results
+    return waves[mask1], fluxes[mask1], npts[mask1], results
 
 
 def fit_features_ext(starpair, path):
@@ -383,7 +423,14 @@ def fit_features_ext(starpair, path):
 
 
 def fit_spex_ext(
-    starpair, path, functype="pow", dense=False, profile="gauss_asym", exclude=None
+    starpair,
+    path,
+    functype="pow",
+    dense=False,
+    profile="drude_asym",
+    exclude=None,
+    bootstrap=False,
+    fixed=False,
 ):
     """
     Fit the observed SpeX NIR extinction curve
@@ -402,11 +449,17 @@ def fit_spex_ext(
     dense : boolean [default=False]
         Whether or not to fit the features around 3 and 3.4 micron
 
-    profile : string [default="gauss_asym"]
+    profile : string [default="drude_asym"]
         Profile to use for the features if dense = True (options are "gauss", "drude", "lorentz", "gauss_asym", "drude_asym", "lorentz_asym")
 
     exclude : tuple [default=None]
         Wavelength region (min,max) to be excluded from the fitting
+
+    bootstrap : boolean [default=False]
+        Whether or not to do a quick bootstrap fitting to get more realistic uncertainties on the fitting results
+
+    fixed : boolean [default=False]
+        Whether or not to add a fixed feature around 3 micron (for diffuse sightlines)
 
     Returns
     -------
@@ -433,16 +486,36 @@ def fit_spex_ext(
         exts = exts[mask]
         exts_unc = exts_unc[mask]
 
+    # get a quick estimate of A(V)
+    if extdata.type == "elx":
+        extdata.calc_AV()
+        AV_guess = extdata.columns["AV"]
+    else:
+        AV_guess = None
+
     # obtain the function to fit
     if "SpeX_LXD" not in extdata.waves.keys():
         dense = False
+        fixed = False
     func = fit_function(
-        dattype=extdata.type, functype=functype, dense=dense, profile=profile
+        dattype=extdata.type,
+        functype=functype,
+        dense=dense,
+        profile=profile,
+        AV_guess=AV_guess,
+        fixed=fixed,
     )
+
+    # for dense sightlines, add more weight to the feature region
+    weights = 1 / exts_unc
+    if dense:
+        mask_ice = (waves > 2.88) & (waves < 3.19)
+        mask_tail = (waves > 3.4) & (waves < 4)
+        weights[mask_ice + mask_tail] *= 2
 
     # use the Levenberg-Marquardt algorithm to fit the data with the model
     fit = LevMarLSQFitter()
-    fit_result_lev = fit(func, waves, exts, weights=1 / exts_unc, maxiter=10000)
+    fit_result_lev = fit(func, waves, exts, weights=weights, maxiter=10000)
 
     # set up the backend to save the samples for the emcee runs
     emcee_samples_file = path + "Fitting_results/" + starpair + "_emcee_samples.h5"
@@ -458,7 +531,8 @@ def fit_spex_ext(
             getattr(fit_result_lev, param).bounds = (0, 4)
         elif "Av" in param:
             getattr(fit_result_lev, param).bounds = (0, 10)
-    fit_result_mcmc = fit2(fit_result_lev, waves, exts, weights=1 / exts_unc)
+
+    fit_result_mcmc = fit2(fit_result_lev, waves, exts, weights=weights)
 
     # create standard MCMC plots
     fit2.plot_emcee_results(
@@ -494,6 +568,18 @@ def fit_spex_ext(
     else:
         full_res[(full_npts > 0)] = residuals
 
+    # bootstrap to get more realistic uncertainties on the parameter results
+    if bootstrap:
+        red_star = StarData(extdata.red_file, path=path, use_corfac=True)
+        comp_star = StarData(extdata.comp_file, path=path, use_corfac=True)
+        red_V_unc = red_star.data["BAND"].get_band_mag("V")[1]
+        comp_V_unc = comp_star.data["BAND"].get_band_mag("V")[1]
+        unc_V = np.sqrt(red_V_unc ** 2 + comp_V_unc ** 2)
+        fit_result_mcmc_low = fit2(fit_result_lev, waves, exts - unc_V, weights=weights)
+        fit_result_mcmc_high = fit2(
+            fit_result_lev, waves, exts + unc_V, weights=weights
+        )
+
     # save the fitting results to the fits file
     if dense:
         functype += "_" + profile
@@ -505,7 +591,28 @@ def fit_spex_ext(
     print("Chi2", extdata.model["chi2"])
     extdata.model["params"] = []
     for param in fit_result.param_names:
+        # update the uncertainties when bootstrapping
+        if bootstrap:
+            min_val = min(
+                getattr(fit_result_mcmc, param).value,
+                getattr(fit_result_mcmc_low, param).value,
+                getattr(fit_result_mcmc_high, param).value,
+            )
+            max_val = max(
+                getattr(fit_result_mcmc, param).value,
+                getattr(fit_result_mcmc_low, param).value,
+                getattr(fit_result_mcmc_high, param).value,
+            )
+            sys_unc = (max_val - min_val) / 2
+            getattr(fit_result, param).unc_minus = np.sqrt(
+                getattr(fit_result, param).unc_minus ** 2 + sys_unc ** 2
+            )
+            getattr(fit_result, param).unc_plus = np.sqrt(
+                getattr(fit_result, param).unc_plus ** 2 + sys_unc ** 2
+            )
+
         extdata.model["params"].append(getattr(fit_result, param))
+
         # save the column information (A(V), E(B-V) and R(V))
         if "Av" in param:
             extdata.columns["AV"] = (
@@ -534,8 +641,12 @@ def fit_spex_ext(
                 rv_per[1] - rv_per[0],
                 rv_per[2] - rv_per[1],
             )
-            print(extdata.columns["RV"])
-    extdata.save("%s%s_ext.fits" % (path, starpair.lower()))
+            print(extdata.columns)
+
+    if fixed:
+        extdata.save("%s%s_ext_ice.fits" % (path, starpair.lower()))
+    else:
+        extdata.save("%s%s_ext.fits" % (path, starpair.lower()))
 
 
 if __name__ == "__main__":
