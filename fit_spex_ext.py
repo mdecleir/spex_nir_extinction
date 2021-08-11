@@ -452,8 +452,8 @@ def fit_spex_ext(
     profile : string [default="drude_asym"]
         Profile to use for the features if dense = True (options are "gauss", "drude", "lorentz", "gauss_asym", "drude_asym", "lorentz_asym")
 
-    exclude : tuple [default=None]
-        Wavelength region (min,max) to be excluded from the fitting
+    exclude : list of tuples [default=None]
+        list of tuples (min,max) with wavelength regions (in micron) that need to be excluded from the fitting, e.g. [(0.8,1.2),(2.2,5)]
 
     bootstrap : boolean [default=False]
         Whether or not to do a quick bootstrap fitting to get more realistic uncertainties on the fitting results
@@ -479,12 +479,14 @@ def fit_spex_ext(
     exts = exts[indx]
     exts_unc = exts_unc[indx]
 
-    # exclude a wavelength region if requested
+    # exclude wavelength regions if requested
     if exclude:
-        mask = (waves < exclude[0]) | (waves > exclude[1])
-        waves = waves[mask]
-        exts = exts[mask]
-        exts_unc = exts_unc[mask]
+        mask = np.full_like(waves, False, dtype=bool)
+        for region in exclude:
+            mask += (waves > region[0]) & (waves < region[1])
+        waves = waves[~mask]
+        exts = exts[~mask]
+        exts_unc = exts_unc[~mask]
 
     # get a quick estimate of A(V)
     if extdata.type == "elx":
@@ -553,9 +555,12 @@ def fit_spex_ext(
             (extdata.waves["SpeX_SXD"].value, extdata.waves["SpeX_LXD"].value)
         )
         full_npts = np.concatenate((extdata.npts["SpeX_SXD"], extdata.npts["SpeX_LXD"]))
-    indxs = np.argsort(full_waves)[
-        np.logical_and(full_waves >= np.min(waves), full_waves <= np.max(waves))
-    ]
+    # sort the wavelengths
+    indxs_sort = np.argsort(full_waves)
+    full_waves = full_waves[indxs_sort]
+    full_npts = full_npts[indxs_sort]
+    # cut the wavelength region
+    indxs = np.logical_and(full_waves >= np.min(waves), full_waves <= np.max(waves))
     full_waves = full_waves[indxs]
     full_npts = full_npts[indxs]
 
@@ -563,8 +568,11 @@ def fit_spex_ext(
     residuals = exts - fit_result(waves)
     full_res = np.full_like(full_npts, np.nan)
     if exclude:
-        new_indx = (full_waves < exclude[0]) | (full_waves > exclude[1])
-        full_res[(full_npts > 0) * new_indx] = residuals
+        mask = np.full_like(full_waves, False, dtype=bool)
+        for region in exclude:
+            mask += (full_waves > region[0]) & (full_waves < region[1])
+        full_res[(full_npts > 0) * ~mask] = residuals
+
     else:
         full_res[(full_npts > 0)] = residuals
 
