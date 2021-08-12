@@ -19,6 +19,7 @@ from measure_extinction.extdata import ExtData
 
 from dust_extinction.averages import RL85_MWGC, I05_MWAvg, G21_MWAvg
 from dust_extinction.grain_models import D03, ZDA04, C11, J13
+from dust_extinction.parameter_averages import F19, CCM89
 
 # gamma function (wavelength dependent width, replacing the FWHM)
 def gamma(x, x_o=1, gamma_o=1, asym=1):
@@ -67,16 +68,16 @@ def plot_extinction_curves(inpath, outpath):
     starpairs = [
         "BD+56d524_HD034816",
         "HD013338_HD031726",
-        # "HD014250_HD042560",
+        # "HD014250_HD031726",
         # "HD014422_HD214680",
-        "HD014956_HD188209",
+        "HD014956_HD214680",
         "HD017505_HD214680",
         "HD029309_HD042560",
-        "HD029647_HD042560",
+        "HD029647_HD034759",
         # "HD034921_HD214680",
         # "HD037020_HD034816",
         # "HD037022_HD034816",
-        # "HD037023_HD034816",
+        # "HD037023_HD036512",
         "HD037061_HD034816",
         "HD038087_HD051283",
         # "HD052721_HD091316",
@@ -84,12 +85,12 @@ def plot_extinction_curves(inpath, outpath):
         # "HD166734_HD031726",
         "HD183143_HD188209",
         "HD185418_HD034816",
-        "HD192660_HD204172",
+        "HD192660_HD214680",
         "HD204827_HD003360",
-        # "HD206773_HD003360",
+        # "HD206773_HD047839",
         "HD229238_HD214680",
         "HD283809_HD003360",
-        # "HD294264_HD034759",
+        # "HD294264_HD051283",
     ]
 
     # plot the extinction curves in E(lambda-V)
@@ -97,24 +98,24 @@ def plot_extinction_curves(inpath, outpath):
         starpairs,
         inpath,
         range=[0.76, 5.5],
-        # spread=True,
+        spread=True,
         exclude=["IRS"],
         pdf=True,
     )
 
     # specify the offsets and angles for the star names
     offsets = [
-        -0.01,
-        0.03,
-        0.01,
+        0.04,
         0.04,
         0.0,
-        0.01,
-        -0.01,
+        0.04,
         0.0,
-        -0.1,
+        0.05,
+        0.03,
+        0.0,
+        -0.07,
         0.02,
-        -0.05,
+        0.01,
         0.05,
         0.01,
         0.05,
@@ -125,14 +126,14 @@ def plot_extinction_curves(inpath, outpath):
         -46,
         -36,
         -30,
-        -48,
-        -46,
-        -42,
-        -42,
         -46,
         -46,
         -42,
-        -48,
+        -42,
+        -44,
+        -46,
+        -42,
+        -46,
         -46,
         -46,
         -46,
@@ -143,13 +144,15 @@ def plot_extinction_curves(inpath, outpath):
         starpairs,
         inpath,
         alax=True,
-        range=[0.76, 5.45],
+        range=[0.76, 5.3],
         spread=True,
         exclude=["IRS", "I", "L", "IRAC1", "IRAC2", "WISE1", "WISE2"],
         text_offsets=offsets,
         text_angles=angles,
         pdf=True,
     )
+
+    # finalize and save the plot
     ax.set_ylim(-0.1, 4.15)
     fig.savefig(outpath + "ext_curves_alav.pdf", bbox_inches="tight")
 
@@ -183,7 +186,7 @@ def plot_average_curve(inpath, outpath):
     )
 
     # add literature curves
-    waves = np.arange(0.75, 5.2, 0.01)
+    waves = np.arange(0.75, 5, 0.001)
 
     # Martin&Whittet 1990 data points, not needed if power law model is plotted
     # MW_waves = np.array([0.36, 0.44, 0.55, 0.7, 0.9, 1.25, 1.65, 2.2, 3.5, 4.8])
@@ -200,7 +203,7 @@ def plot_average_curve(inpath, outpath):
         color="tab:orange",
         lw=1.7,
         ls="-.",
-        alpha=0.8,
+        alpha=0.9,
         label="Martin & Whittet (1990)",
     )
 
@@ -233,8 +236,8 @@ def plot_average_curve(inpath, outpath):
     # MA20 = PowerLaw1D(x_0=1, amplitude=0.4, alpha=2.27)
     # ax.plot(waves, MA20(waves), lw=1.5, ls="--", label="Maiz Apellaniz+2020")
 
-    # average curves from dust_extinction package
-    x = np.arange(0.75, 5.0, 0.01) * u.micron
+    # add average curves from the dust_extinction package
+    x = np.arange(0.75, 5.0, 0.001) * u.micron
     models = [RL85_MWGC, I05_MWAvg, G21_MWAvg]
     styles = ["--", "-.", ":"]
     colors = ["tab:green", "tab:purple", "tab:cyan"]
@@ -258,7 +261,7 @@ def plot_average_curve(inpath, outpath):
             ls=styles[i],
             color=colors[i],
             label=labels[i],
-            alpha=0.8,
+            alpha=0.9,
         )
 
     # finalize and save the figure
@@ -303,12 +306,64 @@ def plot_average_curve(inpath, outpath):
     for i, (cmodel, cname) in enumerate(zip(models, modelnames)):
         ext_model = cmodel(cname)
         yvals = ext_model(x)
-        ax.plot(x, yvals, lw=1.5, ls=styles[i], label=labels[i])
+        ax.plot(x, yvals, lw=1.7, ls=styles[i], label=labels[i], alpha=0.9)
 
     # finalize and save the plot
     ax.set_ylim(-0.03, 0.6)
     plt.legend(fontsize=fs * 0.9)
     fig.savefig(outpath + "average_ext_mod.pdf", bbox_inches="tight")
+
+
+def plot_ave_UV(inpath, outpath):
+    """
+    Plot the average extinction curve in the UV, together with literature curves
+
+    Parameters
+    ----------
+    inpath : string
+        Path to the data files
+
+    outpath : string
+        Path to save the plot
+
+    Returns
+    -------
+    Plot with the average UV diffuse extinction curve
+    """
+    # plot the average extinction curve
+    fig, ax = plot_average(
+        inpath,
+        range=[0.11, 0.323],
+        exclude=["BAND"],
+        pdf=True,
+    )
+
+    # add average curves from the dust_extinction package
+    x = np.arange(0.11, 0.33, 0.001) * u.micron
+    models = [CCM89, F19]
+    styles = ["--", "-"]
+    colors = ["tab:purple", "tab:green"]
+    labels = ["Cardelli et al. (1989)", "Fitzpatrick et al. (2019)"]
+    for i, cmodel in enumerate(models):
+        ext_model = cmodel()
+        (indxs,) = np.where(
+            np.logical_and(
+                1 / x.value >= ext_model.x_range[0], 1 / x.value <= ext_model.x_range[1]
+            )
+        )
+        yvals = ext_model(x[indxs])
+        ax.plot(
+            x[indxs],
+            yvals,
+            lw=1.7,
+            ls=styles[i],
+            color=colors[i],
+            label=labels[i],
+        )
+
+    # finalize and save the plot
+    plt.legend(fontsize=fs * 0.9)
+    fig.savefig(outpath + "average_ext_UV.pdf", bbox_inches="tight")
 
 
 def plot_ave_res(inpath, outpath):
@@ -361,8 +416,8 @@ def plot_ave_res(inpath, outpath):
 
     # indicate hydrogen lines and jumps
     ax[1].annotate(
-        "Pa \n jump",
-        xy=(0.85, 0.019),
+        "Pa\njump",
+        xy=(0.85, 0.0185),
         xytext=(0.85, 0.023),
         fontsize=0.7 * fs,
         ha="center",
@@ -371,9 +426,9 @@ def plot_ave_res(inpath, outpath):
         arrowprops=dict(arrowstyle="-[, widthB=.5, lengthB=.5", lw=1, color="blue"),
     )
     ax[1].annotate(
-        "Br \n jump",
-        xy=(1.46, 0.009),
-        xytext=(1.46, 0.013),
+        "Br\njump",
+        xy=(1.46, 0.0165),
+        xytext=(1.46, 0.021),
         fontsize=0.7 * fs,
         ha="center",
         va="center",
@@ -499,22 +554,22 @@ def plot_features(starpair, inpath, outpath):
     # ax.plot(
     #     waves,
     #     powerlaw
-    #     + gauss_asymmetric(
-    #         extdata.model["waves"],
+    #     + drude_asymmetric(
+    #         waves,
     #         scale=scale_1 * AV,
     #         x_o=x_1,
     #         gamma_o=gamma_1,
     #         asym=asym_1,
     #     ),
     #     ls=":",
-    #     label="Asym. Gauss 1",
+    #     label="Mod. Drude",
     # )
 
     # plot the second feature (if applicable)
     # ax.plot(
     #     waves,
     #     powerlaw
-    #     + gauss_asymmetric(
+    #     + drude_asymmetric(
     #         waves,
     #         scale=scale_2 * AV,
     #         x_o=x_2,
@@ -522,7 +577,7 @@ def plot_features(starpair, inpath, outpath):
     #         asym=asym_2,
     #     ),
     #     ls="-.",
-    #     label="Asym. Gauss 2",
+    #     label="Mod. Drude 2",
     # )
 
     # zoom the residual plot
@@ -533,6 +588,9 @@ def plot_features(starpair, inpath, outpath):
     plt.setp(ax, title="")
     del ax.texts[0]
     ax.legend(loc=3)
+    if starpair == "HD029647_HD034759":
+        ax.set_ylim(-3.44, -3.2)
+    ax.text(0.7, 0.9, starpair.split("_")[0], transform=ax.transAxes, fontsize=1.5 * fs)
     fig.savefig(outpath + starpair + "_ext_features.pdf", bbox_inches="tight")
 
 
@@ -543,12 +601,17 @@ if __name__ == "__main__":
     # plotting settings for uniform plots
     fs = 20
     plt.rc("font", size=fs)
-    plt.rc("xtick", top=True, direction="in", labelsize=fs)
-    plt.rc("ytick", direction="in", labelsize=fs)
-    plt.rc("xtick.major", width=1, size=8)
-    plt.rc("ytick.major", width=1, size=8)
+    plt.rc("xtick.major", width=1, size=10)
+    plt.rc("ytick.major", width=1, size=10)
+    plt.rc("xtick.minor", width=1, size=5)
+    plt.rc("ytick.minor", width=1, size=5)
+    plt.rc("axes.formatter", min_exponent=2)
+    plt.rc("xtick", top=True, direction="in", labelsize=fs * 0.8)
+    plt.rc("ytick", right=True, direction="in", labelsize=fs * 0.8)
 
     # plot_extinction_curves(inpath, outpath)
-    plot_average_curve(inpath, outpath)
-    plot_ave_res(inpath, outpath)
-    plot_features("HD283809_HD003360", inpath, outpath)
+    # plot_average_curve(inpath, outpath)
+    # plot_ave_UV(inpath, outpath)
+    # plot_ave_res(inpath, outpath)
+    # plot_features("HD283809_HD003360", inpath, outpath)
+    # plot_features("HD029647_HD034759", inpath, outpath)
