@@ -46,12 +46,15 @@ def drude_asymmetric(x, scale=1, x_o=1, gamma_o=1, asym=1):
     return y
 
 
-def plot_extinction_curves(inpath, outpath):
+def plot_extinction_curves(starpair_list, inpath, outpath):
     """
     Plot the NIR extinction curves for all stars
 
     Parameters
     ----------
+    starpair_list : list of strings
+        List of star pairs for which to plot the extinction curve, in the format "reddenedstarname_comparisonstarname" (no spaces)
+
     inpath : string
         Path to the data files
 
@@ -64,38 +67,9 @@ def plot_extinction_curves(inpath, outpath):
         - in E(lambda-V)
         - in A(lambda)/A(V)
     """
-    # define the names of the star pairs in the format "reddenedstarname_comparisonstarname"
-    starpairs = [
-        "BD+56d524_HD034816",
-        "HD013338_HD031726",
-        # "HD014250_HD031726",
-        # "HD014422_HD214680",
-        "HD014956_HD214680",
-        "HD017505_HD214680",
-        "HD029309_HD042560",
-        "HD029647_HD034759",
-        # "HD034921_HD214680",
-        # "HD037020_HD034816",
-        # "HD037022_HD034816",
-        # "HD037023_HD036512",
-        "HD037061_HD034816",
-        "HD038087_HD051283",
-        # "HD052721_HD091316",
-        "HD156247_HD042560",
-        # "HD166734_HD031726",
-        "HD183143_HD188209",
-        "HD185418_HD034816",
-        "HD192660_HD214680",
-        "HD204827_HD003360",
-        # "HD206773_HD047839",
-        "HD229238_HD214680",
-        "HD283809_HD003360",
-        # "HD294264_HD051283",
-    ]
-
     # plot the extinction curves in E(lambda-V)
     plot_multi_extinction(
-        starpairs,
+        starpair_list,
         inpath,
         range=[0.76, 5.5],
         spread=True,
@@ -141,7 +115,7 @@ def plot_extinction_curves(inpath, outpath):
 
     # plot the extinction curves in A(lambda)/A(V)
     fig, ax = plot_multi_extinction(
-        starpairs,
+        starpair_list,
         inpath,
         alax=True,
         range=[0.76, 5.3],
@@ -594,6 +568,96 @@ def plot_features(starpair, inpath, outpath):
     fig.savefig(outpath + starpair + "_ext_features.pdf", bbox_inches="tight")
 
 
+# function to plot all residuals in one figure
+def plot_residuals(starpair_list, inpath, outpath):
+    """
+    Plot all residuals in one figure
+
+    Parameters
+    ----------
+    starpair_list : list of strings
+        List of star pairs for which to plot the residuals, in the format "reddenedstarname_comparisonstarname" (no spaces)
+
+    inpath : string
+        Path to the data files
+
+    outpath : string
+        Path to save the plot
+
+    Returns
+    -------
+    Plots with all residuals:
+        - one with all residuals on top of each other, with the average
+        - one with all residuals spread out
+    """
+    # make a list to add all residuals
+    extdata = ExtData("%s%s_ext.fits" % (inpath, starpair_list[0].lower()))
+    full_waves = np.sort(
+        np.concatenate(
+            (extdata.waves["SpeX_SXD"].value, extdata.waves["SpeX_LXD"].value)
+        )
+    )
+    full_res = np.zeros_like(full_waves)
+    full_npts = np.zeros_like(full_waves)
+
+    # compact
+    fig1, ax1 = plt.subplots(figsize=(8, 6))
+    # spread out
+    fig2, ax2 = plt.subplots(figsize=(15, len(starpair_list) * 1.25))
+    colors = plt.get_cmap("tab10")
+
+    for i, starpair in enumerate(starpair_list):
+        extdata = ExtData("%s%s_ext.fits" % (inpath, starpair.lower()))
+
+        # compact
+        ax1.scatter(
+            extdata.model["waves"], extdata.model["residuals"], s=0.3, alpha=0.3
+        )
+        ax1.axhline(ls="--", c="k", alpha=0.5)
+        ax1.axhline(y=-0.02, ls=":", alpha=0.5)
+        ax1.axhline(y=0.02, ls=":", alpha=0.5)
+        ax1.set_ylim([-0.1, 0.1])
+        ax1.set_xlabel(r"$\lambda$ [$\mu m$]")
+        ax1.set_ylabel("residuals")
+
+        # spread out
+        offset = 0.15 * i
+        ax2.scatter(extdata.model["waves"], extdata.model["residuals"] + offset, s=0.5)
+        ax2.axhline(y=offset, ls="--", c="k", alpha=0.5)
+        ax2.axhline(y=offset - 0.1, ls=":", alpha=0.5)
+        ax2.axhline(y=offset + 0.1, ls=":", alpha=0.5)
+        ax2.text(
+            4.1,
+            offset + 0.01,
+            starpair.split("_")[0],
+            color=colors(i % 10),
+            fontsize=14,
+        )
+
+        # sum the residuals
+        for wave in full_waves:
+            indx_model = np.where(extdata.model["waves"] == wave)[0]
+            indx_full = np.where(full_waves == wave)[0]
+            if (len(indx_model) > 0) & (
+                ~np.isnan(extdata.model["residuals"][indx_model])
+            ):
+                full_res[indx_full] += extdata.model["residuals"][indx_model]
+                full_npts[indx_full] += 1
+
+    # plot the average of the residuals
+    ax1.plot(full_waves, full_res / full_npts, color="k", lw=0.2, label="average")
+    # finalize and save the compact plot
+    ax1.legend()
+    fig1.savefig(outpath + "residuals.pdf", bbox_inches="tight")
+
+    # finalize and save the spread plot
+    ax2.set_ylim(-0.1, offset + 0.07)
+    ax2.set_xlim(0.74, 5.3)
+    ax2.set_xlabel(r"$\lambda$ [$\mu m$]")
+    ax2.set_ylabel("residuals + offset")
+    fig2.savefig(outpath + "residuals_spread.pdf", bbox_inches="tight")
+
+
 if __name__ == "__main__":
     inpath = "/Users/mdecleir/Documents/NIR_ext/Data/"
     outpath = "/Users/mdecleir/spex_nir_extinction/Figures/"
@@ -609,9 +673,39 @@ if __name__ == "__main__":
     plt.rc("xtick", top=True, direction="in", labelsize=fs * 0.8)
     plt.rc("ytick", right=True, direction="in", labelsize=fs * 0.8)
 
-    # plot_extinction_curves(inpath, outpath)
+    # define the names of the star pairs in the format "reddenedstarname_comparisonstarname"
+    starpair_list = [
+        "BD+56d524_HD034816",
+        "HD013338_HD031726",
+        # "HD014250_HD031726",
+        # "HD014422_HD214680",
+        "HD014956_HD214680",
+        "HD017505_HD214680",
+        "HD029309_HD042560",
+        "HD029647_HD034759",
+        # "HD034921_HD214680",
+        # "HD037020_HD034816",
+        # "HD037022_HD034816",
+        # "HD037023_HD036512",
+        "HD037061_HD034816",
+        "HD038087_HD051283",
+        # "HD052721_HD091316",
+        "HD156247_HD042560",
+        # "HD166734_HD031726",
+        "HD183143_HD188209",
+        "HD185418_HD034816",
+        "HD192660_HD214680",
+        "HD204827_HD003360",
+        # "HD206773_HD047839",
+        "HD229238_HD214680",
+        "HD283809_HD003360",
+        # "HD294264_HD051283",
+    ]
+
+    # plot_extinction_curves(starpair_list, inpath, outpath)
     # plot_average_curve(inpath, outpath)
     # plot_ave_UV(inpath, outpath)
     # plot_ave_res(inpath, outpath)
     # plot_features("HD283809_HD003360", inpath, outpath)
     # plot_features("HD029647_HD034759", inpath, outpath)
+    plot_residuals(starpair_list, inpath, outpath)

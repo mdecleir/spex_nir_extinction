@@ -366,75 +366,6 @@ def fit_plot_features_ext(starpair, path):
 # # plt.plot(waves, absorbs)
 
 
-# function to plot all residuals in one figure
-def plot_residuals(starpair_list):
-    # make a list to add all residuals
-    extdata = ExtData("%s%s_ext.fits" % (path, starpair_list[0].lower()))
-    full_waves = np.sort(
-        np.concatenate(
-            (extdata.waves["SpeX_SXD"].value, extdata.waves["SpeX_LXD"].value)
-        )
-    )
-    full_res = np.zeros_like(full_waves)
-    full_npts = np.zeros_like(full_waves)
-
-    # compact
-    fig1, ax1 = plt.subplots(figsize=(8, 6))
-    # spread out
-    fig2, ax2 = plt.subplots(figsize=(15, len(starpair_list) * 1.25))
-    colors = plt.get_cmap("tab10")
-
-    for i, starpair in enumerate(starpair_list):
-        extdata = ExtData("%s%s_ext.fits" % (path, starpair.lower()))
-
-        # sum the residuals
-        for wave in full_waves:
-            indx_model = np.where(extdata.model["waves"] == wave)[0]
-            indx_full = np.where(full_waves == wave)[0]
-            if (len(indx_model) > 0) & (
-                ~np.isnan(extdata.model["residuals"][indx_model])
-            ):
-                full_res[indx_full] += extdata.model["residuals"][indx_model]
-                full_npts[indx_full] += 1
-
-        # compact
-        ax1.scatter(
-            extdata.model["waves"], extdata.model["residuals"], s=0.3, alpha=0.3
-        )
-        ax1.axhline(ls="--", c="k", alpha=0.5)
-        ax1.axhline(y=-0.02, ls=":", alpha=0.5)
-        ax1.axhline(y=0.02, ls=":", alpha=0.5)
-        # ax1.axvline(x=1.354, ls=":", alpha=0.5)
-        # ax1.axvline(x=1.411, ls=":", alpha=0.5)
-        # ax1.axvline(x=1.805, ls=":", alpha=0.5)
-        # ax1.axvline(x=1.947, ls=":", alpha=0.5)
-        # ax1.axvline(x=2.522, ls=":", alpha=0.5)
-        # ax1.axvline(x=2.875, ls=":", alpha=0.5)
-        # ax1.axvline(x=4.014, ls=":", alpha=0.5)
-        # ax1.axvline(x=4.594, ls=":", alpha=0.5)
-
-        ax1.set_ylim([-0.2, 0.2])
-        ax1.set_xlabel(r"$\lambda$ [$\mu m$]")
-        ax1.set_ylabel("residuals")
-
-        # spread out
-        offset = 0.2 * i
-        ax2.scatter(extdata.model["waves"], extdata.model["residuals"] + offset, s=0.5)
-        ax2.axhline(y=offset, ls="--", c="k", alpha=0.5)
-        ax2.axhline(y=offset - 0.1, ls=":", alpha=0.5)
-        ax2.axhline(y=offset + 0.1, ls=":", alpha=0.5)
-
-        ax2.text(5, offset, starpair.split("_")[0], color=colors(i % 10), fontsize=14)
-        ax2.set_ylim([-0.2, offset + 0.2])
-        ax2.set_xlabel(r"$\lambda$ [$\mu m$]")
-        ax2.set_ylabel("residuals + offset")
-
-    # plot the average of the residuals
-    ax1.plot(full_waves, full_res / full_npts, color="k", lw=0.2)
-    fig1.savefig(path + "residuals.pdf", bbox_inches="tight")
-    fig2.savefig(path + "residuals_spread.pdf", bbox_inches="tight")
-
-
 if __name__ == "__main__":
     # define the path of the data files
     path = "/Users/mdecleir/Documents/NIR_ext/Data/"
@@ -494,9 +425,6 @@ if __name__ == "__main__":
 
     # ------------------------------------------------------------------
     # EXTRA (eventually not used in the paper)
-    # plot all residuals in one figure
-    # plot_residuals(starpair_list)
-
     # fit features from the spectrum instead of the extinction curve
     # fit_plot_features_spectrum("HD283809", path)
 
