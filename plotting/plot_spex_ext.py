@@ -307,13 +307,14 @@ def plot_ave_UV(inpath, outpath):
     # plot the average extinction curve
     fig, ax = plot_average(
         inpath,
-        range=[0.11, 0.323],
+        range=[0.12, 0.323],
         exclude=["BAND"],
+        rebin_fac=2,
         pdf=True,
     )
 
     # add average curves from the dust_extinction package
-    x = np.arange(0.11, 0.33, 0.001) * u.micron
+    x = np.arange(0.125, 0.321, 0.001) * u.micron
     models = [CCM89, F19]
     styles = ["--", "-"]
     colors = ["tab:purple", "tab:green"]
@@ -337,6 +338,7 @@ def plot_ave_UV(inpath, outpath):
 
     # finalize and save the plot
     plt.legend(fontsize=fs * 0.9)
+    plt.ylim(1.65, 3.65)
     fig.savefig(outpath + "average_ext_UV.pdf", bbox_inches="tight")
 
 
@@ -708,4 +710,4 @@ if __name__ == "__main__":
     # plot_ave_res(inpath, outpath)
     # plot_features("HD283809_HD003360", inpath, outpath)
     # plot_features("HD029647_HD034759", inpath, outpath)
-    plot_residuals(starpair_list, inpath, outpath)
+    # plot_residuals(starpair_list, inpath, outpath)
