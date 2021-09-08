@@ -9,6 +9,7 @@ import os
 from measure_extinction.utils.merge_spex_spec import merge_spex
 from measure_extinction.utils.scale_spex_spec import calc_save_corfac_spex
 from measure_extinction.plotting.plot_spec import plot_spectrum
+from measure_extinction.stardata import StarData
 
 
 def merge_scale_plot(star):
@@ -27,6 +28,14 @@ def merge_scale_plot(star):
     )
 
 
+def print_BV(star):
+    path = "/Users/mdecleir/Documents/NIR_ext/Data/"
+    star_data = StarData("%s.dat" % star.lower(), path=path, use_corfac=False)
+    V = star_data.data["BAND"].get_band_mag("V")
+    B = star_data.data["BAND"].get_band_mag("B")
+    print(star, ", B:", B, ", V:", V, ", B-V:", B[0] - V[0])
+
+
 if __name__ == "__main__":
     # collect the star names in the input directory
     inpath = "/Users/mdecleir/Documents/NIR_ext/Data/SpeX_Data/Reduced_Spectra"
@@ -40,3 +49,4 @@ if __name__ == "__main__":
     spex_path = "/Users/mdecleir/Documents/NIR_ext/Data/SpeX_Data/"
     for star in stars:
         merge_scale_plot(star)
+        print_BV(star)
