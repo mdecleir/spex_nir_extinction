@@ -209,9 +209,9 @@ def fit_function(
         # fit a fixed feature for diffuse sightlines
         Drude_asym = custom_model(drude_asymmetric)
         func += Drude_asym(
-            x_o=3.017745449,
-            gamma_o=0.462600317,
-            asym=-2.865700308,
+            x_o=3.017727049,
+            gamma_o=0.462375776,
+            asym=-2.873011454,
             bounds={"scale": (0, 2)},
             fixed={"x_o": True, "gamma_o": True, "asym": True},
         )
@@ -495,6 +495,11 @@ def fit_spex_ext(
     else:
         AV_guess = None
 
+    # convert to A(lambda)/A(1 micron)
+    # ind1 = np.abs(waves - 1).argmin()
+    # exts = exts / exts[ind1]
+    # exts_unc = exts_unc / exts[ind1]
+
     # obtain the function to fit
     if "SpeX_LXD" not in extdata.waves.keys():
         dense = False
@@ -652,6 +657,12 @@ def fit_spex_ext(
             print(extdata.columns)
 
     if fixed:
+        print(
+            "Ice feature strength: ",
+            extdata.model["params"][3].value,
+            extdata.model["params"][3].unc_minus,
+            extdata.model["params"][3].unc_plus,
+        )
         extdata.save("%s%s_ext_ice.fits" % (path, starpair.lower()))
     else:
         extdata.save("%s%s_ext.fits" % (path, starpair.lower()))
