@@ -320,7 +320,7 @@ def plot_ave_UV(inpath, outpath):
     colors = ["tab:purple", "tab:green"]
     labels = ["Cardelli et al. (1989)", "Fitzpatrick et al. (2019)"]
     for i, cmodel in enumerate(models):
-        ext_model = cmodel()
+        ext_model = cmodel(Rv=3.1)
         (indxs,) = np.where(
             np.logical_and(
                 1 / x.value >= ext_model.x_range[0], 1 / x.value <= ext_model.x_range[1]
@@ -704,10 +704,10 @@ if __name__ == "__main__":
         # "HD294264_HD051283",
     ]
 
-    # plot_extinction_curves(starpair_list, inpath, outpath)
-    # plot_average_curve(inpath, outpath)
-    # plot_ave_UV(inpath, outpath)
-    # plot_ave_res(inpath, outpath)
-    # plot_features("HD283809_HD003360", inpath, outpath)
-    # plot_features("HD029647_HD034759", inpath, outpath)
-    # plot_residuals(starpair_list, inpath, outpath)
+    plot_extinction_curves(starpair_list, inpath, outpath)
+    plot_average_curve(inpath, outpath)
+    plot_ave_UV(inpath, outpath)
+    plot_ave_res(inpath, outpath)
+    plot_features("HD283809_HD003360", inpath, outpath)
+    plot_features("HD029647_HD034759", inpath, outpath)
+    plot_residuals(starpair_list, inpath, outpath)
