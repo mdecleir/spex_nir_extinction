@@ -48,7 +48,7 @@ def calc_fit_plot(
         print("reddened star: ", redstar, "/ comparison star:", compstar)
 
         # calculate the extinction curve
-        calc_extinction(redstar, compstar, path)
+        calc_extinction(redstar, compstar, path, savepath=path)
 
         # fit the extinction curve
         fit_spex_ext(
