@@ -33,7 +33,7 @@ Use
 
 * To create, scale and plot SpeX spectra of all stars in the sample, run: ::
 
-  python prepare_all_spex_spectra.py
+    python prepare_all_spex_spectra.py
 * To plot all spectra, run: ::
   python plotting/plot_spex_spec.py
 * To calculate, fit and plot extinction curves for all the reddened stars in the sample, run: ::
