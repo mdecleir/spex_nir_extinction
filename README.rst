@@ -23,16 +23,16 @@ Dependencies
 ------------
 
 This project uses other repositories:
-- `dust_extinction <https://github.com/karllark/dust_extinction>`_ provides a conversion function (AxAvToExv), average extinction curves and grain models from the literature.
-- `measure_extinction <https://github.com/karllark/measure_extinction>`_ contains the routines to read the data and calculate extinction curves.
+* `dust_extinction <https://github.com/karllark/dust_extinction>`_ provides a conversion function (AxAvToExv), average extinction curves and grain models from the literature.
+* `measure_extinction <https://github.com/karllark/measure_extinction>`_ contains the routines to read the data and calculate extinction curves.
 
 
 Use
 ---
 
-- To create, scale and plot SpeX spectra of all stars in the sample, run: ::
-python prepare_all_spex_spectra.py
-- To plot all spectra, run: ::
-python plotting/plot_spex_spec.py
-- To calculate, fit and plot extinction curves for all the reddened stars in the sample, run: ::
-python calc_fit_plot_ext.py
+* To create, scale and plot SpeX spectra of all stars in the sample, run: ::
+  python prepare_all_spex_spectra.py
+* To plot all spectra, run: ::
+  python plotting/plot_spex_spec.py
+* To calculate, fit and plot extinction curves for all the reddened stars in the sample, run: ::
+  python calc_fit_plot_ext.py
