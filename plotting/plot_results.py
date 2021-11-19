@@ -782,5 +782,5 @@ if __name__ == "__main__":
     # table_results(inpath, table_path, good_diffuse, good_dense)
 
     # create plots
-    # plot_param_triangle(inpath, plot_path, good_diffuse, good_dense)
-    # compare_AV_lit(inpath, data_path, plot_path, good_diffuse + good_dense)
+    plot_param_triangle(inpath, plot_path, good_diffuse, good_dense)
+    compare_AV_lit(inpath, data_path, plot_path, good_diffuse + good_dense)
