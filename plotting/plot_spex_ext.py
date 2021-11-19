@@ -123,6 +123,7 @@ def plot_extinction_curves(starpair_list, inpath, outpath):
         exclude=["IRS", "I", "L", "IRAC1", "IRAC2", "WISE1", "WISE2"],
         text_offsets=offsets,
         text_angles=angles,
+        figsize=(15, 18.75),
         pdf=True,
     )
 
