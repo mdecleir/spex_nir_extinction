@@ -41,12 +41,14 @@ Use
 
     python calc_fit_plot_ext.py
 
-* To plot all extinction curves (Figs. 5-6), run: ::
+* To plot all extinction curves (Figs. 5, 6, 9, 10, 11), run: ::
 
     python plotting/plot_spex_ext.py
 
-* To create tables and plot results (Figs. 7), run: ::
+* To create tables and plot results (Figs. 7-8, Tables 2-3), run: ::
+
     python plotting/plot_results.py
 
-* To measure, fit and plot the R(V) dependence, run: ::
+* To measure, fit and plot the R(V) dependence (Figs. 12-14, Table 4), run: ::
+
     python RV_dependence.py
