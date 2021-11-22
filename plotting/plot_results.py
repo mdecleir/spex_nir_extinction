@@ -779,7 +779,7 @@ if __name__ == "__main__":
     plt.rc("ytick", right=True, direction="in", labelsize=fs * 0.8)
 
     # create tables
-    # table_results(inpath, table_path, good_diffuse, good_dense)
+    table_results(inpath, table_path, good_diffuse, good_dense)
 
     # create plots
     plot_param_triangle(inpath, plot_path, good_diffuse, good_dense)
