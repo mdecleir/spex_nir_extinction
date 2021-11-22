@@ -363,6 +363,7 @@ def plot_ave_res(inpath, outpath):
     average = ExtData(inpath + "average_ext.fits")
 
     # plot the residuals
+    plt.rc("axes", linewidth=0.8)
     fig, ax = plt.subplots(
         2,
         figsize=(10, 7),
@@ -445,7 +446,9 @@ def plot_ave_res(inpath, outpath):
     ax[0].plot(data[0], data[1], color="k", alpha=0.7, lw=0.5)
 
     # finalize and save the plot
-    ax[1].axhline(ls="-", c="k", alpha=0.5)
+    ax[1].axhline(ls="-", c="k", alpha=0.5, lw=1.5)
+    ax[0].tick_params(width=1)
+    ax[1].tick_params(width=1)
     plt.xlim(0.75, 4.9)
     plt.ylim(-0.026, 0.026)
     ax[0].set_ylabel("Atmospheric\ntransmission", fontsize=0.8 * fs)
