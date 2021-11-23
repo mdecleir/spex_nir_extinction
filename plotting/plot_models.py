@@ -4,23 +4,8 @@ import matplotlib.pyplot as plt
 
 from astropy.modeling.powerlaws import PowerLaw1D
 
-from dust_extinction.parameter_averages import CCM89, F19
-from dust_extinction.conversions import AxAvToExv
-
-from dust_extinction.averages import (
-    RL85_MWGC,
-    RRP89_MWGC,
-    I05_MWAvg,
-    CT06_MWLoc,
-    CT06_MWGC,
-    F11_MWGC,
-    G21_MWAvg,
-    GCC09_MWAvg,
-    B92_MWAvg,
-    G03_SMCBar,
-    G03_LMCAvg,
-    G03_LMC2,
-)
+from dust_extinction.parameter_averages import CCM89
+from dust_extinction.averages import G21_MWAvg, GCC09_MWAvg
 
 
 def plot_ext_curves():
@@ -35,24 +20,31 @@ def plot_ext_curves():
     curve = CCM89(Rv=3.1)
     ax.plot(x.value, curve(x), label="Cardelli+1989")
 
-    # NIR-MIR (Gordon et al. 2021)
+    # finalize and save the plot
+    ax.set_xscale("log")
+    plt.rc("axes.formatter", min_exponent=2)
+    plt.xticks(
+        [0.1, 0.2, 0.3, 0.4, 0.5, 0.8, 1.0, 2.0, 3.0],
+        [0.1, 0.2, 0.3, 0.4, 0.5, 0.8, 1.0, 2.0, 3.0],
+    )
+    ax.spines["right"].set_visible(False)
+    ax.spines["top"].set_visible(False)
+    plt.savefig("Figures/CCM89_ext_curve.pdf")
+
+    # add NIR-MIR (Gordon et al. 2021)
     x = np.arange(3, 30.0, 0.1) * u.micron
     curve = G21_MWAvg()
     ax.plot(x, curve(x), label="Gordon+2021")
 
     # finalize and save the plot
     ax.legend(loc="best")
-    ax.set_xscale("log")
     ax.set_yscale("log")
-    plt.rc("axes.formatter", min_exponent=2)
     plt.xticks(
         [0.1, 0.2, 0.3, 0.5, 0.8, 1, 2, 3, 4, 5, 8, 10, 20, 30],
         [0.1, 0.2, 0.3, 0.5, 0.8, 1, 2, 3, 4, 5, 8, 10, 20, 30],
     )
-    ax.spines["right"].set_visible(False)
-    ax.spines["top"].set_visible(False)
-    plt.tight_layout()
-    plt.savefig("Figures/model_ext_curve.pdf")
+
+    plt.savefig("Figures/model_ext_curve.pdf", bbox_inches="tight")
 
     # Gordon et al. 2009
     fig, ax = plt.subplots(figsize=(6, 3.5))
