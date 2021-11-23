@@ -29,6 +29,7 @@ def plot_ext_curves():
     )
     ax.spines["right"].set_visible(False)
     ax.spines["top"].set_visible(False)
+    ax.legend()
     plt.savefig("Figures/CCM89_ext_curve.pdf")
 
     # add NIR-MIR (Gordon et al. 2021)
@@ -51,6 +52,9 @@ def plot_ext_curves():
     curve = GCC09_MWAvg()
     x = np.arange(0.116, 0.3, 0.001) * u.micron
     ax.plot(x, curve(x), label="Gordon+2009")
+    ax.spines["right"].set_visible(False)
+    ax.spines["top"].set_visible(False)
+    ax.legend()
     plt.tight_layout()
     plt.savefig("Figures/GCC09_ext_curve.pdf")
 
