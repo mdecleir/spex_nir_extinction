@@ -43,8 +43,8 @@ def plot_ext_curves():
         [0.1, 0.2, 0.3, 0.5, 0.8, 1, 2, 3, 4, 5, 8, 10, 20, 30],
         [0.1, 0.2, 0.3, 0.5, 0.8, 1, 2, 3, 4, 5, 8, 10, 20, 30],
     )
-
-    plt.savefig("Figures/model_ext_curve.pdf", bbox_inches="tight")
+    plt.tight_layout()
+    plt.savefig("Figures/model_ext_curve.pdf")
 
     # Gordon et al. 2009
     fig, ax = plt.subplots(figsize=(6, 3.5))
