@@ -45,7 +45,7 @@ def measure_SNR(spex_path, data_path, plot_path, star, ranges):
     Measure the SNR of a spectrum, by fitting straight lines to pieces of the spectrum
     """
     # plot the spectrum to define regions without spectral lines
-    fig, ax = plot_spectrum(star, data_path, range=[0.75, 5.6])
+    fig, ax = plot_spectrum(star, data_path, range=[0.75, 5.6], log=True)
 
     # read in all bands and spectra for this star
     starobs = StarData("%s.dat" % star.lower(), path=data_path, use_corfac=True)
