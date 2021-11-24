@@ -308,14 +308,14 @@ def plot_ave_UV(inpath, outpath):
     # plot the average extinction curve
     fig, ax = plot_average(
         inpath,
-        range=[0.12, 0.323],
-        exclude=["BAND"],
-        rebin_fac=2,
+        range=[0.11, 0.323],
+        exclude=["BAND", "SpeX_SXD", "SpeX_LXD", "IRS"],
+        rebin_fac=3,
         pdf=True,
     )
 
     # add average curves from the dust_extinction package
-    x = np.arange(0.125, 0.321, 0.001) * u.micron
+    x = np.arange(0.11, 0.321, 0.001) * u.micron
     models = [CCM89, F19]
     styles = ["--", "-"]
     colors = ["tab:purple", "tab:green"]
@@ -339,7 +339,6 @@ def plot_ave_UV(inpath, outpath):
 
     # finalize and save the plot
     plt.legend(fontsize=fs * 0.9)
-    plt.ylim(1.65, 3.65)
     fig.savefig(outpath + "average_ext_UV.pdf", bbox_inches="tight")
 
 
@@ -607,7 +606,9 @@ def plot_residuals(starpair_list, inpath, outpath):
     full_npts = np.zeros_like(full_waves)
 
     # compact
+    plt.rc("axes", linewidth=0.8)
     fig1, ax1 = plt.subplots(figsize=(8, 6))
+
     # spread out
     fig2, ax2 = plt.subplots(figsize=(15, len(starpair_list) * 1.25))
     colors = plt.get_cmap("tab10")
@@ -619,19 +620,16 @@ def plot_residuals(starpair_list, inpath, outpath):
         ax1.scatter(
             extdata.model["waves"], extdata.model["residuals"], s=0.3, alpha=0.3
         )
-        ax1.axhline(ls="--", c="k", alpha=0.5)
-        ax1.axhline(y=-0.02, ls=":", alpha=0.5)
-        ax1.axhline(y=0.02, ls=":", alpha=0.5)
-        ax1.set_ylim([-0.1, 0.1])
-        ax1.set_xlabel(r"$\lambda$ [$\mu m$]")
-        ax1.set_ylabel("residuals")
+        ax1.axhline(ls="--", c="k", lw=1.5, alpha=0.5)
+        ax1.axhline(y=-0.02, ls=":", lw=1.5, alpha=0.5)
+        ax1.axhline(y=0.02, ls=":", lw=1.5, alpha=0.5)
 
         # spread out
         offset = 0.15 * i
         ax2.scatter(extdata.model["waves"], extdata.model["residuals"] + offset, s=0.5)
-        ax2.axhline(y=offset, ls="--", c="k", alpha=0.5)
-        ax2.axhline(y=offset - 0.1, ls=":", alpha=0.5)
-        ax2.axhline(y=offset + 0.1, ls=":", alpha=0.5)
+        ax2.axhline(y=offset, ls="--", c="k", lw=1.5, alpha=0.5)
+        ax2.axhline(y=offset - 0.1, ls=":", lw=1.5, alpha=0.5)
+        ax2.axhline(y=offset + 0.1, ls=":", lw=1.5, alpha=0.5)
         ax2.text(
             4.1,
             offset + 0.01,
@@ -652,15 +650,21 @@ def plot_residuals(starpair_list, inpath, outpath):
 
     # plot the average of the residuals
     ax1.plot(full_waves, full_res / full_npts, color="k", lw=0.2, label="average")
+
     # finalize and save the compact plot
-    ax1.legend()
+    ax1.legend(fontsize=fs)
+    ax1.set_ylim([-0.1, 0.1])
+    ax1.set_xlabel(r"$\lambda$ [$\mu m$]", fontsize=fs)
+    ax1.set_ylabel("residuals", fontsize=fs)
+    ax1.tick_params(width=1, labelsize=fs * 0.8)
     fig1.savefig(outpath + "residuals.pdf", bbox_inches="tight")
 
     # finalize and save the spread plot
     ax2.set_ylim(-0.1, offset + 0.07)
     ax2.set_xlim(0.74, 5.3)
-    ax2.set_xlabel(r"$\lambda$ [$\mu m$]")
-    ax2.set_ylabel("residuals + offset")
+    ax2.set_xlabel(r"$\lambda$ [$\mu m$]", fontsize=fs)
+    ax2.set_ylabel("residuals + offset", fontsize=fs)
+    ax2.tick_params(width=1, labelsize=fs * 0.8)
     fig2.savefig(outpath + "residuals_spread.pdf", bbox_inches="tight")
 
 
