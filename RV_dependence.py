@@ -573,6 +573,7 @@ def plot_RV_lit(outpath, fit_slopes, fit_intercepts, fit_stds):
     # also save the plot in log scale
     plt.ylim(0.01, 1)
     plt.yscale("log")
+    plt.tight_layout()
     plt.savefig(outpath + "RV_lit_log.pdf")
 
 
