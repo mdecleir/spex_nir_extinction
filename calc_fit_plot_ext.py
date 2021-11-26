@@ -235,6 +235,7 @@ def fit_plot_features_ext(starpair, path):
     waves, exts, results = fit_features_ext(starpair, path)
 
     # plot the data
+    plt.rc("axes", lw=1)
     fig, ax = plt.subplots(
         2, 1, figsize=(8, 6), sharex=True, gridspec_kw={"height_ratios": [6, 1]}
     )
@@ -300,14 +301,16 @@ def fit_plot_features_ext(starpair, path):
     ax[0].set_ylabel("excess extinction")
     ax[0].yaxis.set_major_locator(MaxNLocator(prune="lower"))
     ax[0].legend(fontsize=fs * 0.8)
+    ax[0].tick_params(width=1, labelsize=fs * 0.8)
 
     # plot the residuals (for the best fitting model)
     ax[1].scatter(waves, results[3](waves) - exts, s=0.7, color="C1")
-    ax[1].axhline(ls="--", c="k", alpha=0.5)
-    ax[1].axhline(y=0.05, ls=":", c="k", alpha=0.5)
-    ax[1].axhline(y=-0.05, ls=":", c="k", alpha=0.5)
+    ax[1].axhline(ls="--", c="k", lw=1.5, alpha=0.5)
+    ax[1].axhline(y=0.05, ls=":", c="k", lw=1.5, alpha=0.5)
+    ax[1].axhline(y=-0.05, ls=":", c="k", lw=1.5, alpha=0.5)
     ax[1].set_ylabel("residual")
     ax[1].set_ylim(-0.1, 0.1)
+    ax[1].tick_params(width=1, labelsize=fs * 0.8)
 
     # finish and save the plot
     plt.xlabel(r"$\lambda$ [$\mu m$]")
@@ -414,7 +417,9 @@ if __name__ == "__main__":
     # calculate, fit and plot all dense extinction curves
     # calc_fit_plot(dense_samp, path, dense=True, profile="drude_asym1", bootstrap=True)
 
-    # create more plots
+    # ------------------------------------------------------------------
+    # EXTRA (eventually not used in the paper)
+    # plotting settings
     # fs = 18
     # plt.rc("font", size=fs)
     # plt.rc("axes", lw=1)
@@ -423,8 +428,6 @@ if __name__ == "__main__":
     # plt.rc("xtick.major", width=1, size=8)
     # plt.rc("ytick.major", width=1, size=8)
 
-    # ------------------------------------------------------------------
-    # EXTRA (eventually not used in the paper)
     # fit features from the spectrum instead of the extinction curve
     # fit_plot_features_spectrum("HD283809", path)
 

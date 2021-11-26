@@ -364,7 +364,7 @@ def fit_features_ext(starpair, path):
         List with the fitted models for different profiles
     """
     # first, fit the continuum, excluding the region of the features
-    fit_spex_ext(starpair, path, exclude=(2.8, 3.6))
+    fit_spex_ext(starpair, path, exclude=[(2.8, 3.6)])
 
     # retrieve the SpeX data to be fitted, and sort the curve from short to long wavelengths
     extdata = ExtData("%s%s_ext.fits" % (path, starpair.lower()))
