@@ -132,7 +132,7 @@ def plot_extinction_curves(starpair_list, inpath, outpath):
     fig.savefig(outpath + "ext_curves_alav.pdf", bbox_inches="tight")
 
 
-def plot_average_curve(inpath, outpath):
+def plot_average_curve(inpath, outpath, ice=False):
     """
     Plot the average extinction curve:
      - together with literature curves
@@ -146,14 +146,21 @@ def plot_average_curve(inpath, outpath):
     outpath : string
         Path to save the plot
 
+    ice : boolean [default=False]
+        Whether or not to use the average fit with a fixed ice feature
+
     Returns
     -------
     Plots with the average diffuse extinction curve
     """
     # with literature curves
     # plot the average extinction curve
+    filename = "average_ext.fits"
+    if ice:
+        filename = filename.replace(".", "_ice.")
     fig, ax = plot_average(
         inpath,
+        filename=filename,
         fitmodel=True,
         range=[0.75, 4.9],
         exclude=["IRS", "BAND"],
@@ -247,46 +254,47 @@ def plot_average_curve(inpath, outpath):
         [labels[i] for i in [0, 2, 1, 3, 4]],
         fontsize=fs * 0.9,
     )
-    fig.savefig(outpath + "average_ext.pdf", bbox_inches="tight")
+    fig.savefig(outpath + filename.replace("fits", "pdf"), bbox_inches="tight")
 
-    # with dust grain models
-    # plot the average extinction curve
-    fig, ax = plot_average(
-        inpath,
-        range=[0.75, 4.9],
-        exclude=["IRS", "BAND"],
-        pdf=True,
-    )
+    if not ice:
+        # with dust grain models
+        # plot the average extinction curve
+        fig, ax = plot_average(
+            inpath,
+            range=[0.75, 4.9],
+            exclude=["IRS", "BAND"],
+            pdf=True,
+        )
 
-    # dust grain models from dust_extinction package
-    models = [D03, ZDA04, C11, J13]
-    modelnames = [
-        "MWRV31",
-        "BARE-GR-S",
-        "MWRV31",
-        "MWRV31",
-    ]
-    styles = [
-        "-",
-        "--",
-        "-.",
-        ":",
-    ]
-    labels = [
-        "Draine (2003)",
-        "Zubko et al. (2004)",
-        "Compiègne et al. (2011)",
-        "Jones et al. (2013)",
-    ]
-    for i, (cmodel, cname) in enumerate(zip(models, modelnames)):
-        ext_model = cmodel(cname)
-        yvals = ext_model(x)
-        ax.plot(x, yvals, lw=1.7, ls=styles[i], label=labels[i], alpha=0.9)
+        # dust grain models from dust_extinction package
+        models = [D03, ZDA04, C11, J13]
+        modelnames = [
+            "MWRV31",
+            "BARE-GR-S",
+            "MWRV31",
+            "MWRV31",
+        ]
+        styles = [
+            "-",
+            "--",
+            "-.",
+            ":",
+        ]
+        labels = [
+            "Draine (2003)",
+            "Zubko et al. (2004)",
+            "Compiègne et al. (2011)",
+            "Jones et al. (2013)",
+        ]
+        for i, (cmodel, cname) in enumerate(zip(models, modelnames)):
+            ext_model = cmodel(cname)
+            yvals = ext_model(x)
+            ax.plot(x, yvals, lw=1.7, ls=styles[i], label=labels[i], alpha=0.9)
 
-    # finalize and save the plot
-    ax.set_ylim(-0.03, 0.6)
-    plt.legend(fontsize=fs * 0.9)
-    fig.savefig(outpath + "average_ext_mod.pdf", bbox_inches="tight")
+        # finalize and save the plot
+        ax.set_ylim(-0.03, 0.6)
+        plt.legend(fontsize=fs * 0.9)
+        fig.savefig(outpath + "average_ext_mod.pdf", bbox_inches="tight")
 
 
 def plot_ave_UV(inpath, outpath):
@@ -342,7 +350,7 @@ def plot_ave_UV(inpath, outpath):
     fig.savefig(outpath + "average_ext_UV.pdf", bbox_inches="tight")
 
 
-def plot_ave_res(inpath, outpath):
+def plot_ave_res(inpath, outpath, ice=False):
     """
     Plot the residuals of the average curve fit separately
 
@@ -354,12 +362,18 @@ def plot_ave_res(inpath, outpath):
     outpath : string
         Path to save the plot
 
+    ice : boolean [default=False]
+        Whether or not to use the average fit with a fixed ice feature
+
     Returns
     -------
     Plot with the residuals of the average curve fit
     """
     # read in the average extinction curve
-    average = ExtData(inpath + "average_ext.fits")
+    filename = "average_ext.fits"
+    if ice:
+        filename = filename.replace(".", "_ice.")
+    average = ExtData(inpath + filename)
 
     # plot the residuals
     plt.rc("axes", linewidth=0.8)
@@ -453,7 +467,10 @@ def plot_ave_res(inpath, outpath):
     ax[0].set_ylabel("Atmospheric\ntransmission", fontsize=0.8 * fs)
     ax[1].set_xlabel(r"$\lambda$ [$\mu m$]", fontsize=fs)
     ax[1].set_ylabel("residual $A(\lambda)/A(V)$", fontsize=fs)
-    fig.savefig(outpath + "average_res.pdf", bbox_inches="tight")
+    fig.savefig(
+        outpath + filename.replace("ext", "res").replace("fits", "pdf"),
+        bbox_inches="tight",
+    )
 
 
 def plot_features(starpair, inpath, outpath):
@@ -714,8 +731,10 @@ if __name__ == "__main__":
 
     plot_extinction_curves(starpair_list, inpath, outpath)
     plot_average_curve(inpath, outpath)
+    plot_average_curve(inpath, outpath, ice=True)
     plot_ave_UV(inpath, outpath)
     plot_ave_res(inpath, outpath)
+    plot_ave_res(inpath, outpath, ice=True)
     plot_features("HD283809_HD003360", inpath, outpath)
     plot_features("HD029647_HD034759", inpath, outpath)
     plot_residuals(starpair_list, inpath, outpath)

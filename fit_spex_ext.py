@@ -472,7 +472,10 @@ def fit_spex_ext(
         - params: list with output Parameter objects
     """
     # retrieve the SpeX data to be fitted, and sort the curve from short to long wavelengths
-    extdata = ExtData("%s%s_ext.fits" % (path, starpair.lower()))
+    filename = "%s%s_ext.fits" % (path, starpair.lower())
+    if fixed:
+        filename = filename.replace(".", "_ice.")
+    extdata = ExtData(filename)
     (waves, exts, exts_unc) = extdata.get_fitdata(["SpeX_SXD", "SpeX_LXD"])
     indx = np.argsort(waves)
     waves = waves[indx].value
@@ -656,6 +659,10 @@ def fit_spex_ext(
             )
             print(extdata.columns)
 
+    # save the fits file
+    extdata.save(filename)
+
+    # print information about the ice feature
     if fixed:
         print(
             "Ice feature strength: ",
@@ -663,9 +670,6 @@ def fit_spex_ext(
             extdata.model["params"][3].unc_minus,
             extdata.model["params"][3].unc_plus,
         )
-        extdata.save("%s%s_ext_ice.fits" % (path, starpair.lower()))
-    else:
-        extdata.save("%s%s_ext.fits" % (path, starpair.lower()))
 
 
 if __name__ == "__main__":

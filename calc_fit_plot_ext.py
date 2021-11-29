@@ -83,7 +83,6 @@ def calc_fit_average(starpair_list, path, fixed=False):
     path : string
         Path to the data files
 
-
     fixed : boolean [default=False]
         Whether or not to add a fixed feature around 3 micron
 
@@ -102,7 +101,10 @@ def calc_fit_average(starpair_list, path, fixed=False):
     ]
 
     # calculate the average extinction curve
-    calc_ave_ext(starpair_list, path, min_number=5, mask=mask)
+    outname = "average_ext.fits"
+    if fixed:
+        outname = outname.replace(".", "_ice.")
+    calc_ave_ext(starpair_list, path, outname=outname, min_number=5, mask=mask)
 
     # fit the average extinction curve
     fit_spex_ext("average", path, fixed=fixed)
@@ -409,13 +411,13 @@ if __name__ == "__main__":
     # calc_fit_plot(diffuse, path, bootstrap=True, fixed=True)
 
     # calculate and fit the average diffuse extinction curve
-    # calc_fit_average(diffuse, path)
+    calc_fit_average(diffuse, path)
 
     # calculate and fit the average diffuse extinction curve with a fixed feature
-    # calc_fit_average(diffuse, path, fixed=True)
+    calc_fit_average(diffuse, path, fixed=True)
 
     # calculate, fit and plot all dense extinction curves
-    # calc_fit_plot(dense_samp, path, dense=True, profile="drude_asym1", bootstrap=True)
+    calc_fit_plot(dense_samp, path, dense=True, profile="drude_asym1", bootstrap=True)
 
     # ------------------------------------------------------------------
     # EXTRA (eventually not used in the paper)
