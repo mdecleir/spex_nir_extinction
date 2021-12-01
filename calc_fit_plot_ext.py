@@ -323,54 +323,6 @@ def fit_plot_features_ext(starpair, path):
     )
 
 
-# def plot_lab_ice():
-# file = "data/H2O_NASA.dat"
-# table = pd.read_table(file, comment="#", sep="\s+")
-# table = table[2531:]
-# waves = 1 / table["Freq."] * 1e4
-# norm = np.max(-table["%T,10K"] + 100)
-# absorbs = (-table["%T,10K"] + 100) / norm
-#
-# # plot the spectrum
-# # plt.plot(waves, absorbs, color="k", label=r"H$_2$O ice")
-#
-# file = "data/mixother_NASA.dat"
-# table = pd.read_table(file, comment="#", sep="\s+")
-#
-# table = table[2531:]
-# waves = 1 / table["Freq."] * 1e4
-# norm = np.max(-table["%T,10K"] + 95)
-# absorbs = (-table["%T,10K"] + 95) / norm
-#
-# # plot the spectrum
-# # plt.plot(waves, absorbs, color="k", label=r"mixed ice")
-#
-# file = "data/mix_Leiden.dat"
-# table = pd.read_table(file, comment="#", sep="\s+")
-# table = table[4330:]
-# waves = 1 / table["Freq."] * 1e4
-# norm = np.max(table["Trans."] + 0.02)
-# absorbs = (table["Trans."] + 0.02) / norm
-# # plt.plot(waves, absorbs)
-#
-# file = "data/ammon.dat"
-# table = pd.read_table(file, comment="#", sep="\s+")
-# table = table[4000:]
-# waves = 1 / table["Freq."] * 1e4
-# norm = np.max(table["Trans."] + 0.01)
-# absorbs = (table["Trans."] + 0.01) / norm
-# # plt.plot(waves, absorbs)
-#
-# file = "data/Godd_mix.dat"
-# table = pd.read_table(file, comment="#", sep="\s+")
-# table = table[500:]
-# waves = 1 / table["freq"] * 1e4
-# norm = np.max(table["absorbance"] + 0.01)
-# absorbs = (table["absorbance"] + 0.01) / norm
-#
-# # plt.plot(waves, absorbs)
-
-
 if __name__ == "__main__":
     # define the path of the data files
     path = "/Users/mdecleir/Documents/NIR_ext/Data/"
@@ -405,10 +357,10 @@ if __name__ == "__main__":
     dense_samp = ["HD029647_HD034759", "HD283809_HD003360"]
 
     # calculate, fit and plot all diffuse extinction curves
-    # calc_fit_plot(diffuse, path, bootstrap=True)
+    calc_fit_plot(diffuse, path, bootstrap=True)
 
     # fit all diffuse sightlines with a fixed feature
-    # calc_fit_plot(diffuse, path, bootstrap=True, fixed=True)
+    calc_fit_plot(diffuse, path, bootstrap=True, fixed=True)
 
     # calculate and fit the average diffuse extinction curve
     calc_fit_average(diffuse, path)
