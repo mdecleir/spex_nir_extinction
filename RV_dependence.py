@@ -813,7 +813,7 @@ if __name__ == "__main__":
     fit_plot_rv_dep(inpath, plot_path, table_path, good_diffuse, good_dense)
 
     # fit and plot the RV dependence when normalizing to 1 micron instead of to the V-band
-    # fit_plot_rv_dep(inpath, plot_path, table_path, good_diffuse, good_dense, norm=1)
+    fit_plot_rv_dep(inpath, plot_path, table_path, good_diffuse, good_dense, norm=1)
 
     # ------------------------------------------------------------------
     # EXTRA (eventually not used in the paper)
