@@ -16,7 +16,7 @@ def drude_modified(x, scale=1, x_o=1, gamma_o=1, asym=1):
     return y
 
 
-def plot_ice():
+def plot_fit_ice():
     fs = 16
     plt.rc("xtick", direction="in", labelsize=fs * 0.8)
     plt.rc("ytick", direction="in", labelsize=fs * 0.8)
@@ -146,5 +146,40 @@ def plot_ice():
     )
 
 
+def plot_ice():
+    fig, ax = plt.subplots(figsize=(9, 5))
+
+    file = "mix_Leiden.dat"
+    table = pd.read_table(file, comment="#", sep="\s+")
+    table = table[4330:]
+    waves = 1 / table["Freq."] * 1e4
+    norm = np.max(table["Trans."] + 0.02)
+    absorbs = (table["Trans."] + 0.02) / norm
+    plt.plot(waves, absorbs, label="mix Leiden")
+
+    file = "ammon.dat"
+    table = pd.read_table(file, comment="#", sep="\s+")
+    table = table[4000:]
+    waves = 1 / table["Freq."] * 1e4
+    norm = np.max(table["Trans."] + 0.01)
+    absorbs = (table["Trans."] + 0.01) / norm
+    plt.plot(waves, absorbs, label="ammonia")
+
+    file = "Godd_mix.dat"
+    table = pd.read_table(file, comment="#", sep="\s+")
+    table = table[500:]
+    waves = 1 / table["freq"] * 1e4
+    norm = np.max(table["absorbance"] + 0.01)
+    absorbs = (table["absorbance"] + 0.01) / norm
+    plt.plot(waves, absorbs, label="mix Goddard")
+
+    plt.legend()
+    fig.savefig(
+        "/Users/mdecleir/spex_nir_extinction/Figures/lab_ice_spectra.pdf",
+        bbox_inches="tight",
+    )
+
+
 if __name__ == "__main__":
+    plot_fit_ice()
     plot_ice()
