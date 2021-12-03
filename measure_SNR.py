@@ -13,9 +13,23 @@ from measure_extinction.stardata import StarData
 from measure_extinction.plotting.plot_spec import plot_spectrum
 
 
-def print_SNR(data_path, plot_path):
+def SNR_ori_spec(data_path, plot_path):
     """
-    Print the SNR of the spectra
+    - Print the SNR of all the original spectra, as they come out of Spextool
+    - Plot the median SNRs
+
+    Parameters
+    ----------
+    data_path : string
+        Path to the data files
+
+    plot_path : string
+        Path to save the plot
+
+    Returns
+    -------
+    - Maximum and median SNR for every spectrum
+    - Plot with all median SNRs
     """
     medians = []
     stars = np.arange(75)
@@ -38,6 +52,62 @@ def print_SNR(data_path, plot_path):
     # plot the SNR medians
     plt.scatter(stars, medians)
     plt.savefig(plot_path + "SNR_meds.pdf")
+
+
+def SNR_final_spec(data_path, plot_path, stars, plot=False):
+    """
+    - Calculate the median SNR of the final used spectra after the 1% noise addition and after "merging" (in merge_obsspec.py), in certain wavelength regions
+    - Plot the SNR of the final used spectra if requested
+
+    Parameters
+    ----------
+    data_path : string
+        Path to the data files
+
+    plot_path : string
+        Path to save the plot
+
+    stars : list of strings
+        List of stars for which to calculate (and plot) the SNR
+
+    plot : boolean [default=False]
+        Whether or not to plot the SNR vs. wavelength for every star
+
+    Returns
+    -------
+    - Median SNRs in certain wavelength regions
+    - Plots of the SNR vs. wavelength (if requested)
+    """
+    meds = np.zeros((3, len(stars)))
+    for j, star in enumerate(stars):
+        # obtain the flux values and uncertainties
+        starobs = StarData(
+            "%s.dat" % star.lower(),
+            path=data_path,
+            use_corfac=True,
+        )
+        waves, fluxes, uncs = starobs.get_flat_data_arrays(["SpeX_SXD", "SpeX_LXD"])
+
+        # calculate the median SNR in certain wavelength regions
+        ranges = [
+            (0.79, 2.54),
+            (2.85, 4.05),
+            (4.55, 5.5),
+        ]
+        SNR = fluxes / uncs
+        for i, range in enumerate(ranges):
+            mask = (waves > range[0]) & (waves < range[1])
+            meds[i][j] = np.median(SNR[mask])
+
+        # plot SNR vs. wavelength if requested
+        if plot:
+            fig, ax = plt.subplots()
+            ax.scatter(waves, fluxes / uncs, s=1)
+            plt.savefig(plot_path + star + "_SNR.pdf")
+
+    print(ranges[0], np.nanmin(meds[0]), np.nanmax(meds[0]))
+    print(ranges[1], np.nanmin(meds[1]), np.nanmax(meds[1]))
+    print(ranges[2], np.nanmin(meds[2]), np.nanmax(meds[2]))
 
 
 def measure_SNR(spex_path, data_path, plot_path, star, ranges):
@@ -101,8 +171,36 @@ if __name__ == "__main__":
     data_path = "/Users/mdecleir/Documents/NIR_ext/Data/"
     plot_path = "/Users/mdecleir/spex_nir_extinction/Figures/"
 
-    # print the SNR information for all stars
-    print_SNR(spex_path, plot_path)
+    # print and plot SNR of original spectra
+    SNR_ori_spec(spex_path, plot_path)
+
+    # print and plot SNR of used spectra
+    stars = [
+        "HD034759",
+        "HD042560",
+        "HD003360",
+        "HD031726",
+        "HD034816",
+        "HD214680",
+        "HD051283",
+        "HD188209",
+        "HD156247",
+        "HD185418",
+        "HD013338",
+        "HD017505",
+        "HD038087",
+        "BD+56d524",
+        "HD029309",
+        "HD192660",
+        "HD204827",
+        "HD037061",
+        "HD014956",
+        "HD229238",
+        "HD029647",
+        "HD183143",
+        "HD283809",
+    ]
+    SNR_final_spec(data_path, plot_path, stars)
 
     # measure the SNR in a few wavelength ranges for a few stars
     # HD283809
@@ -117,7 +215,7 @@ if __name__ == "__main__":
         (3.772, 4.01),
         (4.705, 5.194),
     ]
-    measure_SNR(spex_path, data_path, plot_path, "HD283809", ranges)
+    # measure_SNR(spex_path, data_path, plot_path, "HD283809", ranges)
     # HD037061
     ranges = [
         (0.806, 0.843),
@@ -129,7 +227,7 @@ if __name__ == "__main__":
         (3.36, 3.689),
         (3.772, 3.997),
     ]
-    measure_SNR(spex_path, data_path, plot_path, "HD037061", ranges)
+    # measure_SNR(spex_path, data_path, plot_path, "HD037061", ranges)
     # HD185418
     ranges = [
         (0.807, 0.843),
@@ -141,4 +239,4 @@ if __name__ == "__main__":
         (2.88, 3.27),
         (3.33, 3.54),
     ]
-    measure_SNR(spex_path, data_path, plot_path, "HD185418", ranges)
+    # measure_SNR(spex_path, data_path, plot_path, "HD185418", ranges)
