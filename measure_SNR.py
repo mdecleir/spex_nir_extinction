@@ -10,6 +10,7 @@ from astropy.modeling.fitting import LevMarLSQFitter, LinearLSQFitter
 from astropy.stats import sigma_clipped_stats
 
 from measure_extinction.stardata import StarData
+from measure_extinction.extdata import ExtData
 from measure_extinction.plotting.plot_spec import plot_spectrum
 
 
@@ -65,7 +66,7 @@ def SNR_final_spec(data_path, plot_path, stars, plot=False):
         Path to the data files
 
     plot_path : string
-        Path to save the plot
+        Path to save the plots
 
     stars : list of strings
         List of stars for which to calculate (and plot) the SNR
@@ -165,6 +166,63 @@ def measure_SNR(spex_path, data_path, plot_path, star, ranges):
         fig.savefig(plot_path + star + "_SNR_measure.pdf")
 
 
+def SNR_ext(data_path, plot_path, starpair_list, plot=False):
+    """
+    - Calculate the median SNR of the extinction curves in certain wavelength regions
+    - Plot the SNR of the extinction curves if requested
+
+    Parameters
+    ----------
+    data_path : string
+        Path to the data files
+
+    plot_path : string
+        Path to save the plots
+
+    starpair_list : list of strings
+        List of star pairs for which to calculate (and plot) the SNR, in the format "reddenedstarname_comparisonstarname" (no spaces)
+
+    plot : boolean [default=False]
+        Whether or not to plot the SNR vs. wavelength for every curve
+
+    Returns
+    -------
+    - Median SNRs in certain wavelength regions
+    - Plots of the SNR vs. wavelength (if requested)
+    """
+    meds = np.zeros((3, len(starpair_list)))
+    for j, starpair in enumerate(starpair_list):
+        # obtain the extinction curve data
+        extdata = ExtData("%s%s_ext.fits" % (data_path, starpair.lower()))
+
+        # transform the curve from E(lambda-V) to A(lambda)/A(V)
+        extdata.trans_elv_alav()
+
+        # obtain flat arrays
+        waves, exts, uncs = extdata.get_fitdata(["SpeX_SXD", "SpeX_LXD"])
+
+        # calculate the median SNR in certain wavelength regions
+        ranges = [
+            (0.79, 2.54),
+            (2.85, 4.05),
+            (4.55, 5.5),
+        ]
+        SNR = exts / uncs
+        for i, range in enumerate(ranges):
+            mask = (waves.value > range[0]) & (waves.value < range[1])
+            meds[i][j] = np.median(np.abs(SNR[mask]))
+
+        # plot SNR vs. wavelength if requested
+        if plot:
+            fig, ax = plt.subplots()
+            ax.scatter(waves, SNR, s=1)
+            plt.savefig(plot_path + starpair + "_SNR.pdf")
+
+    print(ranges[0], np.nanmin(meds[0]), np.nanmax(meds[0]))
+    print(ranges[1], np.nanmin(meds[1]), np.nanmax(meds[1]))
+    print(ranges[2], np.nanmin(meds[2]), np.nanmax(meds[2]))
+
+
 if __name__ == "__main__":
     # define the path to the data files
     spex_path = "/Users/mdecleir/Documents/NIR_ext/Data/SpeX_Data/Reduced_spectra/"
@@ -201,6 +259,27 @@ if __name__ == "__main__":
         "HD283809",
     ]
     SNR_final_spec(data_path, plot_path, stars)
+
+    # print and plot SNR of extinction curves
+    starpair_list = [
+        "BD+56d524_HD034816",
+        "HD013338_HD031726",
+        "HD014956_HD214680",
+        "HD017505_HD214680",
+        "HD029309_HD042560",
+        "HD029647_HD034759",
+        "HD037061_HD034816",
+        "HD038087_HD051283",
+        "HD156247_HD042560",
+        "HD183143_HD188209",
+        "HD185418_HD034816",
+        "HD192660_HD214680",
+        "HD204827_HD003360",
+        "HD229238_HD214680",
+        "HD283809_HD003360",
+    ]
+
+    SNR_ext(data_path, plot_path, starpair_list)
 
     # measure the SNR in a few wavelength ranges for a few stars
     # HD283809
