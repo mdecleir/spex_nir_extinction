@@ -118,6 +118,7 @@ def plot_extinction_curves(starpair_list, inpath, outpath):
         starpair_list,
         inpath,
         alax=True,
+        fitmodel=True,
         range=[0.76, 5.3],
         spread=True,
         exclude=["IRS", "I", "L", "IRAC1", "IRAC2", "WISE1", "WISE2"],
@@ -127,8 +128,14 @@ def plot_extinction_curves(starpair_list, inpath, outpath):
         pdf=True,
     )
 
+    # change the fitted lines to thinner dashed lines
+    for i, line in enumerate(ax.lines):
+        if line.get_color() == "crimson":
+            plt.setp(ax.lines[i], ls="--", lw=1.5)
+
     # finalize and save the plot
     ax.set_ylim(-0.1, 4.15)
+    ax.get_legend().remove()
     fig.savefig(outpath + "ext_curves_alav.pdf", bbox_inches="tight")
 
 
