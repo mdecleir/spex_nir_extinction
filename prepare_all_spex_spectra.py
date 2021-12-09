@@ -24,6 +24,7 @@ def merge_scale_plot(star):
         range=[0.78, 5.55],
         norm_range=[1, 1.1],
         exclude=["IRS", "STIS_Opt"],
+        log=True,
         pdf=True,
     )
 
