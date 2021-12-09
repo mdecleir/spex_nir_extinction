@@ -13,7 +13,12 @@ from fit_spex_ext import fit_spex_ext, fit_features_ext, fit_features_spec
 
 # function to calculate, fit and plot all extinction curves
 def calc_fit_plot(
-    starpair_list, path, dense=False, profile="gauss_asym", bootstrap=False, fixed=False
+    starpair_list,
+    path,
+    dense=False,
+    profile="drude_asym1",
+    bootstrap=False,
+    fixed=False,
 ):
     """
     Calculate, fit and plot the extinction curve for all star pairs in "starpair_list"
@@ -29,7 +34,7 @@ def calc_fit_plot(
     dense : boolean [default=False]
         Whether or not the sightline is dense
 
-    profile : string [default="gauss_asym"]
+    profile : string [default="drude_asym1"]
         Profile to use for the feature(s) if dense = True (options are "gauss1", "drude1", "lorentz1", "gauss_asym1", "drude_asym1", "lorentz_asym1","gauss2", "drude2", "lorentz2", "gauss_asym2", "drude_asym2", "lorentz_asym2")
 
     bootstrap : boolean [default=False]
@@ -353,7 +358,6 @@ if __name__ == "__main__":
         "HD229238_HD214680",
         # "HD294264_HD051283",
     ]
-
     dense_samp = ["HD029647_HD034759", "HD283809_HD003360"]
 
     # calculate, fit and plot all diffuse extinction curves
