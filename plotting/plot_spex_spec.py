@@ -10,26 +10,7 @@ from measure_extinction.plotting.plot_spec import plot_multi_spectra
 from measure_extinction.stardata import StarData
 
 
-def plot_comp_spectra(inpath, outpath):
-    # define the names of the comparison stars (first the main sequence stars and then the giant stars, sorted by spectral type from B8 to O4)
-    stars = [
-        "HD034759",
-        "HD032630",
-        "HD042560",
-        "HD003360",
-        "HD031726",
-        "HD034816",
-        "HD036512",
-        "HD214680",
-        "HD047839",
-        "HD164794",
-        "HD078316",
-        "HD051283",
-        "HD091316",
-        "HD204172",
-        "HD188209",
-    ]
-
+def plot_comp_spectra(inpath, outpath, stars):
     # specify the offsets and angles for the star names
     offsets = [
         0.2,
@@ -91,26 +72,7 @@ def plot_comp_spectra(inpath, outpath):
     fig.savefig(outpath + "comp_stars.pdf", bbox_inches="tight")
 
 
-def plot_red_spectra(inpath, outpath):
-    # define the names of the reddened stars (sorted by A(V) from low to high)
-    stars = [
-        "HD156247",
-        "HD185418",
-        "HD013338",
-        "HD017505",
-        "HD038087",
-        "BD+56d524",
-        "HD029309",
-        "HD192660",
-        "HD204827",
-        "HD037061",
-        "HD014956",
-        "HD229238",
-        "HD029647",
-        "HD183143",
-        "HD283809",
-    ]
-
+def plot_red_spectra(inpath, outpath, stars):
     # specify the offsets and angles for the star names
     offsets = [
         0.19,
@@ -150,20 +112,7 @@ def plot_red_spectra(inpath, outpath):
     fig.savefig(outpath + "red_stars.pdf", bbox_inches="tight")
 
 
-def plot_unused_spectra(inpath, outpath):
-    # define the names of the reddened stars that cannot be used to measure an extinction curve (sorted by steepness)
-    stars = [
-        "HD014250",
-        "HD037022",
-        "HD052721",
-        "HD037023",
-        "HD206773",
-        "HD034921",
-        "HD037020",
-        "HD294264",
-        "HD166734",
-        "HD014422",
-    ]
+def plot_unused_spectra(inpath, outpath, stars):
     # specify the offsets and angles for the star names
     offsets = [0.18, 0.25, 0.08, 0.25, 0.14, -0.03, 0.19, 0.22, 0.35, 0.25]
     angles = [11, 19, 22, 22, 25, 30, 35, 39, 37, 39]
@@ -296,6 +245,7 @@ def plot_wind(inpath, outpath, comp_stars, red_stars, bad_stars):
 if __name__ == "__main__":
     inpath = "/Users/mdecleir/Documents/NIR_ext/Data/"
     outpath = "/Users/mdecleir/spex_nir_extinction/Figures/"
+    # define the names of the comparison stars (first the main sequence stars and then the giant stars, sorted by spectral type from B8 to O4)
     comp_stars = [
         "HD034759",
         "HD032630",
@@ -313,6 +263,7 @@ if __name__ == "__main__":
         "HD204172",
         "HD188209",
     ]
+    # define the names of the reddened stars (sorted by A(V) from low to high)
     red_stars = [
         "HD156247",
         "HD185418",
@@ -330,6 +281,7 @@ if __name__ == "__main__":
         "HD183143",
         "HD283809",
     ]
+    # define the names of the reddened stars that cannot be used to measure an extinction curve (sorted by steepness)
     bad_stars = [
         "HD014250",
         "HD037022",
@@ -350,7 +302,7 @@ if __name__ == "__main__":
     plt.rc("xtick.major", width=1, size=8)
     plt.rc("ytick.major", width=1, size=8)
 
-    plot_comp_spectra(inpath, outpath)
-    plot_red_spectra(inpath, outpath)
-    plot_unused_spectra(inpath, outpath)
+    plot_comp_spectra(inpath, outpath, comp_stars)
+    plot_red_spectra(inpath, outpath, red_stars)
+    plot_unused_spectra(inpath, outpath, bad_stars)
     plot_wind(inpath, outpath, comp_stars, red_stars, bad_stars)
