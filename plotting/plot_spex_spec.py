@@ -160,6 +160,7 @@ def plot_wind(inpath, outpath, comp_stars, red_stars, bad_stars):
     -------
     IR color-color plots
     """
+    plt.rc("axes", linewidth=0.8)
     stars = comp_stars + red_stars + bad_stars
     fig1, ax1 = plt.subplots(figsize=(8, 7))
     fig2, ax2 = plt.subplots(figsize=(8, 7))
@@ -226,10 +227,12 @@ def plot_wind(inpath, outpath, comp_stars, red_stars, bad_stars):
     # finalize and save the figures
     ax1.axhline(1.0, color="grey", ls=":")
     ax2.axhline(0.6, color="grey", ls=":")
-    ax1.set_xlabel(r"$J-K_S$")
-    ax1.set_ylabel(r"$K_S-WISE 4$")
-    ax2.set_xlabel(r"$J-K_S$")
-    ax2.set_ylabel(r"$K_S-MIPS 24$")
+    ax1.set_xlabel(r"$J-K_S$", fontsize=fs)
+    ax1.set_ylabel(r"$K_S-WISE 4$", fontsize=fs)
+    ax2.set_xlabel(r"$J-K_S$", fontsize=fs)
+    ax2.set_ylabel(r"$K_S-MIPS 24$", fontsize=fs)
+    ax1.tick_params(width=1)
+    ax2.tick_params(width=1)
 
     labels = ["comparison", "reddened", "bad or windy"]
     handle1 = Line2D([], [], lw=1, color="black", marker="P", alpha=0.7)
