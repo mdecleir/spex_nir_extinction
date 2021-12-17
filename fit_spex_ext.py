@@ -636,13 +636,18 @@ def fit_spex_ext(
                 getattr(fit_result, param).unc_minus,
                 getattr(fit_result, param).unc_plus,
             )
-            # calculate the distrubtion of R(V) from the distributions of A(V) and E(B-V)
-            av_dist = getattr(fit_result, param).posterior
+            # calculate the distrubtion of R(V) and 1/R(V) from the distributions of A(V) and E(B-V)
+            nsamples = getattr(fit_result, param).posterior.n_samples
+            av_dist = unc.normal(
+                extdata.columns["AV"][0],
+                std=(extdata.columns["AV"][1] + extdata.columns["AV"][2]) / 2,
+                n_samples=nsamples,
+            )
             b_indx = np.abs(extdata.waves["BAND"] - 0.438 * u.micron).argmin()
             ebv_dist = unc.normal(
                 extdata.exts["BAND"][b_indx],
                 std=extdata.uncs["BAND"][b_indx],
-                n_samples=av_dist.n_samples,
+                n_samples=nsamples,
             )
             ebv_per = ebv_dist.pdf_percentiles([16.0, 50.0, 84.0])
             extdata.columns["EBV"] = (
@@ -656,6 +661,13 @@ def fit_spex_ext(
                 rv_per[1],
                 rv_per[1] - rv_per[0],
                 rv_per[2] - rv_per[1],
+            )
+            inv_rv_dist = ebv_dist / av_dist
+            inv_rv_per = inv_rv_dist.pdf_percentiles([16.0, 50.0, 84.0])
+            extdata.columns["1/RV"] = (
+                inv_rv_per[1],
+                inv_rv_per[1] - inv_rv_per[0],
+                inv_rv_per[2] - inv_rv_per[1],
             )
             print(extdata.columns)
 
