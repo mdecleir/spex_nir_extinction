@@ -664,7 +664,7 @@ def fit_spex_ext(
             )
             inv_rv_dist = ebv_dist / av_dist
             inv_rv_per = inv_rv_dist.pdf_percentiles([16.0, 50.0, 84.0])
-            extdata.columns["1/RV"] = (
+            extdata.columns["IRV"] = (
                 inv_rv_per[1],
                 inv_rv_per[1] - inv_rv_per[0],
                 inv_rv_per[2] - inv_rv_per[1],
