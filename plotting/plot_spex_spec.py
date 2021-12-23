@@ -135,6 +135,86 @@ def plot_unused_spectra(inpath, outpath, stars):
     fig.savefig(outpath + "bad_stars.pdf", bbox_inches="tight")
 
 
+def plot_color_color(stars, bands, div):
+    """
+    Make a color-color plot
+
+    Parameters
+    ----------
+    stars : list of strings
+        List of stars
+
+    bands : list of strings
+        List of bands
+
+    div : float
+        Location of division line
+
+    Returns
+    -------
+    IR color-color plot
+    """
+    # create the figure
+    plt.rc("axes", linewidth=0.8)
+    fig, ax = plt.subplots(figsize=(8, 7))
+
+    for i, star in enumerate(stars):
+        # categorize the star
+        if star in comp_stars:
+            color = "black"
+            marker = "P"
+        elif star in red_stars:
+            color = "green"
+            marker = "d"
+        elif star == "HD014250":
+            color = "purple"
+            marker = "s"
+        else:
+            color = "red"
+            marker = "o"
+
+        # obtain the photometry
+        star_data = StarData("%s.dat" % star.lower(), path=inpath)
+        band_data = star_data.data["BAND"]
+        mags = np.full(len(bands), np.nan)
+        errs = np.full(len(bands), np.nan)
+        for j, band in enumerate(bands):
+            if band == "K_S":
+                band = "K"
+            if band in band_data.get_band_names():
+                mags[j] = band_data.get_band_mag(band)[0]
+                errs[j] = band_data.get_band_mag(band)[1]
+
+        # plot colors
+        ax.errorbar(
+            mags[0] - mags[1],
+            mags[2] - mags[3],
+            xerr=np.sqrt((errs[0] ** 2) + (errs[1] ** 2)),
+            yerr=np.sqrt((errs[2] ** 2) + (errs[3] ** 2)),
+            marker=marker,
+            color=color,
+            markersize=6,
+            markeredgewidth=0,
+            elinewidth=0.8,
+            alpha=0.7,
+        )
+
+    # finalize and save the plot
+    ax.axhline(div, color="grey", ls=":")
+    ax.set_xlabel(r"$" + bands[0] + "-" + bands[1] + "$", fontsize=fs)
+    ax.set_ylabel(r"$" + bands[2] + "-$" + bands[3], fontsize=fs)
+    ax.tick_params(width=1)
+
+    labels = ["comparison", "reddened", "windy", "bad"]
+    handle1 = Line2D([], [], lw=1, color="black", marker="P", alpha=0.7)
+    handle2 = Line2D([], [], lw=1, color="green", marker="d", alpha=0.7)
+    handle3 = Line2D([], [], lw=1, color="red", marker="o", alpha=0.7)
+    handle4 = Line2D([], [], lw=1, color="purple", marker="s", alpha=0.7)
+    handles = [handle1, handle2, handle3, handle4]
+    ax.legend(handles, labels, fontsize=fs * 0.8)
+    fig.savefig(outpath + "wind_" + bands[3] + ".pdf", bbox_inches="tight")
+
+
 def plot_wind(inpath, outpath, comp_stars, red_stars, bad_stars):
     """
     Make IR color-color plots to separate windy stars
@@ -160,89 +240,20 @@ def plot_wind(inpath, outpath, comp_stars, red_stars, bad_stars):
     -------
     IR color-color plots
     """
-    plt.rc("axes", linewidth=0.8)
     stars = comp_stars + red_stars + bad_stars
-    fig1, ax1 = plt.subplots(figsize=(8, 7))
-    fig2, ax2 = plt.subplots(figsize=(8, 7))
-    for i, star in enumerate(stars):
-        # categorize the star
-        if star in comp_stars:
-            color = "black"
-            marker = "P"
-        elif star in red_stars:
-            color = "green"
-            marker = "d"
-        else:
-            color = "red"
-            marker = "o"
 
-        # obtain the J, K, WISE 4 and MIPS 24 photometry
-        star_data = StarData("%s.dat" % star.lower(), path=inpath)
-        band_data = star_data.data["BAND"]
-        J = band_data.get_band_mag("J")[0]
-        Jerr = band_data.get_band_mag("J")[1]
-        K = band_data.get_band_mag("K")[0]
-        Kerr = band_data.get_band_mag("K")[1]
-        if "WISE4" in band_data.get_band_names():
-            W4 = band_data.get_band_mag("WISE4")[0]
-            W4err = band_data.get_band_mag("WISE4")[1]
-        else:
-            W4 = np.nan
-            W4err = np.nan
-        if "MIPS24" in band_data.get_band_names():
-            M1 = band_data.get_band_mag("MIPS24")[0]
-            M1err = band_data.get_band_mag("MIPS24")[1]
-        else:
-            M1 = np.nan
-            M1err = np.nan
-
-        # plot K-W4 vs. J-K
-        ax1.errorbar(
-            J - K,
-            K - W4,
-            xerr=np.sqrt((Jerr ** 2) + (Kerr ** 2)),
-            yerr=np.sqrt((Kerr ** 2) + (W4err ** 2)),
-            marker=marker,
-            color=color,
-            markersize=6,
-            markeredgewidth=0,
-            elinewidth=0.8,
-            alpha=0.7,
-        )
-
-        # plot K-M1 vs. J-K
-        ax2.errorbar(
-            J - K,
-            K - M1,
-            xerr=np.sqrt((Jerr ** 2) + (Kerr ** 2)),
-            yerr=np.sqrt((Kerr ** 2) + (M1err ** 2)),
-            marker=marker,
-            color=color,
-            markersize=6,
-            markeredgewidth=0,
-            elinewidth=0.8,
-            alpha=0.7,
-        )
-
-    # finalize and save the figures
-    ax1.axhline(1.0, color="grey", ls=":")
-    ax2.axhline(0.6, color="grey", ls=":")
-    ax1.set_xlabel(r"$J-K_S$", fontsize=fs)
-    ax1.set_ylabel(r"$K_S-WISE 4$", fontsize=fs)
-    ax2.set_xlabel(r"$J-K_S$", fontsize=fs)
-    ax2.set_ylabel(r"$K_S-MIPS 24$", fontsize=fs)
-    ax1.tick_params(width=1)
-    ax2.tick_params(width=1)
-
-    labels = ["comparison", "reddened", "bad or windy"]
-    handle1 = Line2D([], [], lw=1, color="black", marker="P", alpha=0.7)
-    handle2 = Line2D([], [], lw=1, color="green", marker="d", alpha=0.7)
-    handle3 = Line2D([], [], lw=1, color="red", marker="o", alpha=0.7)
-    handles = [handle1, handle2, handle3]
-    ax1.legend(handles, labels, fontsize=fs * 0.8)
-    ax2.legend(handles, labels, fontsize=fs * 0.8)
-    fig1.savefig(outpath + "wind_WISE.png", bbox_inches="tight")
-    fig2.savefig(outpath + "wind_MIPS.png", bbox_inches="tight")
+    # plot K-WISE4 vs. J-K
+    plot_color_color(stars, ["J", "K_S", "K_S", "WISE4"], 1)
+    # plot K-MIPS24 vs. J-K
+    plot_color_color(stars, ["J", "K_S", "K_S", "MIPS24"], 0.6)
+    # plot K-IRAC1 vs. J-K
+    plot_color_color(stars, ["J", "K_S", "K_S", "IRAC1"], 0.2)
+    # plot K-IRAC2 vs. J-K
+    plot_color_color(stars, ["J", "K_S", "K_S", "IRAC2"], 0.25)
+    # plot K-WISE1 vs. J-K
+    plot_color_color(stars, ["J", "K_S", "K_S", "WISE1"], 0.11)
+    # plot K-WISE2 vs. J-K
+    plot_color_color(stars, ["J", "K_S", "K_S", "WISE2"], 0.4)
 
 
 if __name__ == "__main__":
