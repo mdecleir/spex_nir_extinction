@@ -294,7 +294,7 @@ if __name__ == "__main__":
         (3.772, 4.01),
         (4.705, 5.194),
     ]
-    # measure_SNR(spex_path, data_path, plot_path, "HD283809", ranges)
+    measure_SNR(spex_path, data_path, plot_path, "HD283809", ranges)
     # HD037061
     ranges = [
         (0.806, 0.843),
@@ -306,7 +306,7 @@ if __name__ == "__main__":
         (3.36, 3.689),
         (3.772, 3.997),
     ]
-    # measure_SNR(spex_path, data_path, plot_path, "HD037061", ranges)
+    measure_SNR(spex_path, data_path, plot_path, "HD037061", ranges)
     # HD185418
     ranges = [
         (0.807, 0.843),
@@ -318,4 +318,4 @@ if __name__ == "__main__":
         (2.88, 3.27),
         (3.33, 3.54),
     ]
-    # measure_SNR(spex_path, data_path, plot_path, "HD185418", ranges)
+    measure_SNR(spex_path, data_path, plot_path, "HD185418", ranges)
