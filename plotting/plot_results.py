@@ -453,7 +453,7 @@ def plot_params(
     )
 
 
-def plot_param_triangle(inpath, outpath, diffuse, dense):
+def plot_param_triangle(inpath, outpath, diffuse, dense, inverse=False):
     (
         amplitudes,
         amp_min,
@@ -467,7 +467,10 @@ def plot_param_triangle(inpath, outpath, diffuse, dense):
         RVs,
         RV_min,
         RV_plus,
-    ) = (np.zeros(len(diffuse + dense)) for i in range(12))
+        inv_RVs,
+        inv_RV_min,
+        inv_RV_plus,
+    ) = (np.zeros(len(diffuse + dense)) for i in range(15))
     dense_bool = np.full(len(diffuse + dense), False)
 
     # retrieve the fitting results for all sightlines
@@ -485,6 +488,9 @@ def plot_param_triangle(inpath, outpath, diffuse, dense):
         RVs[i] = extdata.columns["RV"][0]
         RV_min[i] = extdata.columns["RV"][1]
         RV_plus[i] = extdata.columns["RV"][2]
+        inv_RVs[i] = extdata.columns["IRV"][0]
+        inv_RV_min[i] = extdata.columns["IRV"][1]
+        inv_RV_plus[i] = extdata.columns["IRV"][2]
 
         # flag the dense sightlines
         if starpair in dense:
@@ -508,23 +514,62 @@ def plot_param_triangle(inpath, outpath, diffuse, dense):
         ax[1, 0], dense_bool, amplitudes, AVs, (amp_min, amp_plus), (AV_min, AV_plus)
     )
 
-    # plot R(V) vs. amplitude
-    plot_params(
-        ax[2, 0], dense_bool, amplitudes, RVs, (amp_min, amp_plus), (RV_min, RV_plus)
-    )
+    if inverse:  # plot 1/R(V) vs. amplitude
+        plot_params(
+            ax[2, 0],
+            dense_bool,
+            amplitudes,
+            inv_RVs,
+            (amp_min, amp_plus),
+            (inv_RV_min, inv_RV_plus),
+        )
+    else:  # plot R(V) vs. amplitude
+        plot_params(
+            ax[2, 0],
+            dense_bool,
+            amplitudes,
+            RVs,
+            (amp_min, amp_plus),
+            (RV_min, RV_plus),
+        )
 
     # plot A(V) vs. alpha
     plot_params(
         ax[1, 1], dense_bool, alphas, AVs, (alpha_min, alpha_plus), (AV_min, AV_plus)
     )
 
-    # plot R(V) vs. alpha
-    plot_params(
-        ax[2, 1], dense_bool, alphas, RVs, (alpha_min, alpha_plus), (RV_min, RV_plus)
-    )
+    if inverse:  # plot 1/R(V) vs. alpha
+        plot_params(
+            ax[2, 1],
+            dense_bool,
+            alphas,
+            inv_RVs,
+            (alpha_min, alpha_plus),
+            (inv_RV_min, inv_RV_plus),
+        )
+    else:  # plot R(V) vs. alpha
+        plot_params(
+            ax[2, 1],
+            dense_bool,
+            alphas,
+            RVs,
+            (alpha_min, alpha_plus),
+            (RV_min, RV_plus),
+        )
 
-    # plot R(V) vs. A(V)
-    plot_params(ax[2, 2], dense_bool, AVs, RVs, (AV_min, AV_plus), (RV_min, RV_plus))
+    if inverse:  # plot 1/R(V) vs. A(V)
+        plot_params(
+            ax[2, 2],
+            dense_bool,
+            AVs,
+            inv_RVs,
+            (AV_min, AV_plus),
+            (inv_RV_min, inv_RV_plus),
+        )
+    else:  # plot R(V) vs. A(V)
+        plot_params(
+            ax[2, 2], dense_bool, AVs, RVs, (AV_min, AV_plus), (RV_min, RV_plus)
+        )
 
     # add the average diffuse extinction fitting results
     average = ExtData(inpath + "average_ext.fits")
@@ -539,6 +584,8 @@ def plot_param_triangle(inpath, outpath, diffuse, dense):
     rel_unc = abav_unc / abav
     ave_RV = 1 / (abav - 1)
     ave_RV_unc = ave_RV * rel_unc
+    inv_ave_RV = 1 / ave_RV
+    inv_ave_RV_unc = inv_ave_RV * rel_unc
 
     ax[0, 0].errorbar(
         amp,
@@ -553,36 +600,67 @@ def plot_param_triangle(inpath, outpath, diffuse, dense):
         label="average diffuse",
     )
 
-    ax[2, 0].errorbar(
-        amp,
-        ave_RV,
-        xerr=[[amp_min], [amp_plus]],
-        yerr=ave_RV_unc,
-        fmt="*",
-        markersize=14,
-        zorder=0,
-        alpha=0.8,
-        color="crimson",
-        label="average diffuse",
-    )
+    if inverse:
+        ax[2, 0].errorbar(
+            amp,
+            inv_ave_RV,
+            xerr=[[amp_min], [amp_plus]],
+            yerr=inv_ave_RV_unc,
+            fmt="*",
+            markersize=14,
+            zorder=0,
+            alpha=0.8,
+            color="crimson",
+            label="average diffuse",
+        )
+    else:
+        ax[2, 0].errorbar(
+            amp,
+            ave_RV,
+            xerr=[[amp_min], [amp_plus]],
+            yerr=ave_RV_unc,
+            fmt="*",
+            markersize=14,
+            zorder=0,
+            alpha=0.8,
+            color="crimson",
+            label="average diffuse",
+        )
 
-    ax[2, 1].errorbar(
-        alpha,
-        ave_RV,
-        xerr=[[alpha_min], [alpha_plus]],
-        yerr=ave_RV_unc,
-        fmt="*",
-        markersize=14,
-        zorder=0,
-        alpha=0.8,
-        color="crimson",
-        label="average diffuse",
-    )
+    if inverse:
+        ax[2, 1].errorbar(
+            alpha,
+            inv_ave_RV,
+            xerr=[[alpha_min], [alpha_plus]],
+            yerr=inv_ave_RV_unc,
+            fmt="*",
+            markersize=14,
+            zorder=0,
+            alpha=0.8,
+            color="crimson",
+            label="average diffuse",
+        )
+    else:
+        ax[2, 1].errorbar(
+            alpha,
+            ave_RV,
+            xerr=[[alpha_min], [alpha_plus]],
+            yerr=ave_RV_unc,
+            fmt="*",
+            markersize=14,
+            zorder=0,
+            alpha=0.8,
+            color="crimson",
+            label="average diffuse",
+        )
 
     # finalize the plot
     ax[0, 0].set_ylabel(r"$\alpha$", fontsize=fs)
     ax[1, 0].set_ylabel("$A(V)$", fontsize=fs)
-    ax[2, 0].set_ylabel("$R(V)$", fontsize=fs)
+    if inverse:
+        ax[2, 0].set_ylabel("$1/R(V)$", fontsize=fs)
+    else:
+        ax[2, 0].set_ylabel("$R(V)$", fontsize=fs)
     ax[2, 0].set_xlabel("$S$", fontsize=fs)
     ax[2, 1].set_xlabel(r"$\alpha$", fontsize=fs)
     ax[2, 2].set_xlabel("$A(V)$", fontsize=fs)
@@ -592,7 +670,10 @@ def plot_param_triangle(inpath, outpath, diffuse, dense):
     handles, labels = ax[0, 0].get_legend_handles_labels()
     plt.subplots_adjust(wspace=0, hspace=0)
     fig.legend(handles, labels, bbox_to_anchor=(0.88, 0.88))
-    plt.savefig(outpath + "params.pdf", bbox_inches="tight")
+    outname = outpath + "params.pdf"
+    if inverse:
+        outname = outname.replace(".pdf", "_inverse.pdf")
+    plt.savefig(outname, bbox_inches="tight")
 
 
 def compare_AV_lit(ext_path, lit_path, plot_path, starpair_list):
@@ -783,4 +864,5 @@ if __name__ == "__main__":
 
     # create plots
     plot_param_triangle(inpath, plot_path, good_diffuse, good_dense)
+    plot_param_triangle(inpath, plot_path, good_diffuse, good_dense, inverse=True)
     compare_AV_lit(inpath, data_path, plot_path, good_diffuse + good_dense)
