@@ -348,11 +348,11 @@ def table_results(inpath, outpath, diffuse, dense):
                 + "}^{+"
                 + "{:.2f}".format(extdata.model["params"][2].unc_plus)
                 + "}",
-                "{:.3f}".format(extdata.model["params"][3].value)
+                "{:.4f}".format(extdata.model["params"][3].value)
                 + "_{-"
-                + "{:.3f}".format(extdata.model["params"][3].unc_minus)
+                + "{:.4f}".format(extdata.model["params"][3].unc_minus)
                 + "}^{+"
-                + "{:.3f}".format(extdata.model["params"][3].unc_plus)
+                + "{:.4f}".format(extdata.model["params"][3].unc_plus)
                 + "}",
                 "{:.3f}".format(extdata.model["params"][4].value)
                 + "_{-"
