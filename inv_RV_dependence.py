@@ -23,6 +23,7 @@ def get_data(inpath, starpair_list_diff, starpair_list_dense, norm="V"):
     Obtain the required data for all stars in the star pair lists:
         - A(lambda)/A(V)
         - 1/R(V)
+        - A(V)
 
     Parameters
     ----------
@@ -40,10 +41,11 @@ def get_data(inpath, starpair_list_diff, starpair_list_dense, norm="V"):
 
     Returns
     -------
-    1/R(V) with uncertainties, A(lambda)/A(V) with uncertainties, wavelengths
+    1/R(V) with uncertainties, A(V) with uncertainties, A(lambda)/A(V) with uncertainties, wavelengths, boolean for dense/diffuse
     """
     starpair_list = starpair_list_diff + starpair_list_dense
     inv_RVs = np.zeros((len(starpair_list), 3))
+    AVs = np.zeros((len(starpair_list), 3))
 
     # determine the wavelengths at which to retrieve the extinction data
     extdata_model = ExtData("%s%s_ext.fits" % (inpath, starpair_list[0].lower()))
@@ -61,9 +63,10 @@ def get_data(inpath, starpair_list_diff, starpair_list_dense, norm="V"):
 
     # retrieve the information for all stars
     for i, starpair in enumerate(starpair_list):
-        # retrieve 1/R(V) (with uncertainties)
+        # retrieve 1/R(V) and A(V) (with uncertainties)
         extdata = ExtData("%s%s_ext.fits" % (inpath, starpair.lower()))
         inv_RVs[i] = np.array(extdata.columns["IRV"])
+        AVs[i] = np.array(extdata.columns["AV"])
 
         # transform the curve from E(lambda-V) to A(lambda)/A(V)
         extdata.trans_elv_alav()
@@ -89,7 +92,7 @@ def get_data(inpath, starpair_list_diff, starpair_list_dense, norm="V"):
         if starpair in dense:
             dense_bool[i] = True
 
-    return inv_RVs, alavs, alav_uncs, waves, dense_bool
+    return inv_RVs, AVs, alavs, alav_uncs, waves, dense_bool
 
 
 def get_phot(waves, exts, bands):
@@ -151,6 +154,45 @@ def get_phot(waves, exts, bands):
         else:
             band_ext[k] = np.nan
     return band_ext
+
+
+def calc_corr(f, f_unc, g, g_unc, fac, fac_unc):
+    """
+    Function to calculate the correlation coefficients between two (arrays of) quantities (functions) f and g that have a common denominator fac with uncertainty fac_unc
+
+    Parameters
+    ----------
+    f : np.ndarray
+        Numpy array with values of the first quantity
+
+    f_unc : np.ndarray
+        Numpy array with uncertainties of the first quantity
+
+    g : np.ndarray
+        Numpy array with values of the second quantity
+
+    g_unc : np.ndarray
+        Numpy array with uncertainties of the second quantity
+
+    fac : np.ndarray
+        Numpy array with values of the common factor
+
+    fac_unc : np.ndarray
+        Numpy array with uncertainties of the common factor
+
+    Returns
+    -------
+    The correlation coefficients between two quantities f and g
+    """
+    # calculate the covariance between f and g
+    # cov(f,g) = (df/dfac) * (dg/dfac) * fac_unc**2
+    # in this case f=x/fac, g=y/fac
+    # so cov(f,g) = f * g * fac_unc**2 / fac**2
+    cov = f * g * fac_unc ** 2 / fac ** 2
+
+    # calculate and return the correlation coefficient between f and g
+    # corr = cov(f,g) / (f_unc * g_unc)
+    return cov / (f_unc * g_unc)
 
 
 def plot_inv_rv_dep(
@@ -631,15 +673,19 @@ def fit_plot_inv_rv_dep(
     Several plots related to the R(V)-dependence
     """
     # collect the data to be fitted
-    inv_RVs, alavs, alav_uncs, waves, dense_bool = get_data(
+    inv_RVs, AVs, alavs, alav_uncs, waves, dense_bool = get_data(
         inpath, starpair_list_diff, starpair_list_dense, norm
     )
     inv_RV_vals = inv_RVs[:, 0]
+    inv_RV_uncs = (inv_RVs[:, 1] + inv_RVs[:, 2]) / 2
+    AV_vals = AVs[:, 0]
+    AV_uncs = (AVs[:, 1] + AVs[:, 2]) / 2
 
     # for every wavelength, fit a straight line through the A(lambda)/A(V) vs. 1/R(V)-1/3.1 data
     fit = fitting.LinearLSQFitter()
     line_func = models.Linear1D()
     slopes, intercepts, stds = np.full((3, len(waves)), np.nan)
+    corr_list = []
 
     for j, wave in enumerate(waves):
         mask = ~np.isnan(alavs[j])
@@ -665,6 +711,26 @@ def fit_plot_inv_rv_dep(
         slopes[j] = fitted_line.slope.value
         intercepts[j] = fitted_line.intercept.value
         stds[j] = std
+
+        # calculate the correlation coefficient between A(lambda)/A(V) and 1/R(V) for every sightline, and find out the range in correlation coefficients and the median value over all sightlines and all wavelengths
+        corr = calc_corr(
+            alavs[j][mask],
+            alav_uncs[j][mask],
+            inv_RV_vals[mask],
+            inv_RV_uncs[mask],
+            AV_vals[mask],
+            AV_uncs[mask],
+        )
+        for value in corr:
+            corr_list.append(value)
+
+    # print information about the correlation coefficients
+    print(
+        "Minimum, median and maximum correlation coefficients: ",
+        np.min(corr_list),
+        np.median(corr_list),
+        np.max(corr_list),
+    )
 
     # plot A(lambda)/A(V) vs. 1/R(V) at certain wavelengths
     plot_waves = [0.89864296, 1.6499686, 2.4527225, 3.5002365, 4.697073]
