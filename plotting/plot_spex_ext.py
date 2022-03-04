@@ -132,6 +132,8 @@ def plot_extinction_curves(starpair_list, inpath, outpath):
     for i, line in enumerate(ax.lines):
         if line.get_color() == "crimson":
             plt.setp(ax.lines[i], ls="--", lw=1.5)
+        elif line.get_color() == "k":
+            plt.setp(ax.lines[i], alpha=1)
 
     # finalize and save the plot
     ax.set_ylim(-0.1, 4.15)
