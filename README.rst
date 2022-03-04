@@ -27,7 +27,7 @@ This project uses other repositories:
 * `dust_extinction <https://github.com/karllark/dust_extinction>`_ provides a conversion function (AxAvToExv), average extinction curves and grain models from the literature.
 * `measure_extinction <https://github.com/karllark/measure_extinction>`_ contains the routines to read the data and calculate extinction curves.
 
-The data files (including final spectra and extinction curves) related to this work, can be found on `Zenodo <https://zenodo.org/record/5802469#.YiJ5Ni-cY2I>`_
+The data files (including final spectra and extinction curves) related to this work, can be found on `Zenodo <https://zenodo.org/record/5802469#.YiJ5Ni-cY2I>`_.
 
 
 Use
