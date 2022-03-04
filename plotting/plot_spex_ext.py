@@ -171,13 +171,13 @@ def plot_average_curve(inpath, outpath, ice=False):
         inpath,
         filename=filename,
         fitmodel=True,
-        range=[0.75, 4.9],
+        range=[0.75, 5.05],
         exclude=["IRS", "BAND"],
         pdf=True,
     )
 
     # add literature curves
-    waves = np.arange(0.75, 5, 0.001)
+    waves = np.arange(0.75, 5.1, 0.001)
 
     # Martin&Whittet 1990 data points, not needed if power law model is plotted
     # MW_waves = np.array([0.36, 0.44, 0.55, 0.7, 0.9, 1.25, 1.65, 2.2, 3.5, 4.8])
@@ -228,7 +228,7 @@ def plot_average_curve(inpath, outpath, ice=False):
     # ax.plot(waves, MA20(waves), lw=1.5, ls="--", label="Maiz Apellaniz+2020")
 
     # add average curves from the dust_extinction package
-    x = np.arange(0.75, 5.0, 0.001) * u.micron
+    x = np.arange(0.75, 5.1, 0.001) * u.micron
     models = [RL85_MWGC, I05_MWAvg, G21_MWAvg]
     styles = ["--", "-.", ":"]
     colors = ["tab:green", "tab:purple", "tab:cyan"]
@@ -270,7 +270,7 @@ def plot_average_curve(inpath, outpath, ice=False):
         # plot the average extinction curve
         fig, ax = plot_average(
             inpath,
-            range=[0.75, 4.9],
+            range=[0.75, 5.05],
             exclude=["IRS", "BAND"],
             pdf=True,
         )
@@ -400,7 +400,7 @@ def plot_ave_res(inpath, outpath, ice=False):
     ax[1].scatter(waves, residuals, s=1.5, color="k")
 
     # calculate the standard deviation of the residuals in different wavelength ranges
-    ranges = [(0.79, 1.37), (1.4, 1.82), (1.92, 2.54), (2.85, 4.05), (4.55, 4.8)]
+    ranges = [(0.79, 1.37), (1.4, 1.82), (1.92, 2.54), (2.85, 4.05), (4.55, 5.0)]
     for range in ranges:
         mask = (waves > range[0]) & (waves < range[1])
         mean, median, stddev = sigma_clipped_stats(residuals[mask])
@@ -471,7 +471,7 @@ def plot_ave_res(inpath, outpath, ice=False):
     ax[1].axhline(ls="-", c="k", alpha=0.5, lw=1.5)
     ax[0].tick_params(width=1)
     ax[1].tick_params(width=1)
-    plt.xlim(0.75, 4.9)
+    plt.xlim(0.75, 5.05)
     plt.ylim(-0.026, 0.026)
     ax[0].set_ylabel("Atmospheric\ntransmission", fontsize=0.8 * fs)
     ax[1].set_xlabel(r"$\lambda$ [$\mu m$]", fontsize=fs)
