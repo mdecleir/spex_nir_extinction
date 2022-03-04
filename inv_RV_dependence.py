@@ -623,7 +623,7 @@ def plot_inv_RV_lit(outpath, fit_slopes, fit_intercepts, fit_stds):
     waves = np.arange(0.8, 4.01, 0.001)
     fig, ax = plt.subplots(figsize=(10, 9))
 
-    for i, RV in enumerate([2.0, 3.1, 5.5]):
+    for i, RV in enumerate([2.5, 3.1, 5.5]):
         # plot the extinction curve from this work
         offset = 0.1 * i
         slopes = interpolate.splev(waves, fit_slopes)
@@ -660,7 +660,7 @@ def plot_inv_RV_lit(outpath, fit_slopes, fit_intercepts, fit_stds):
             )
 
     # add text
-    ax.text(3.45, 0.03, r"$R(V) = 2.0$", fontsize=0.8 * fs, color="tab:blue")
+    ax.text(3.45, 0.03, r"$R(V) = 2.5$", fontsize=0.8 * fs, color="tab:blue")
     ax.text(3.45, 0.15, r"$R(V) = 3.1$", fontsize=0.8 * fs, color="tab:orange")
     ax.text(3.45, 0.305, r"$R(V) = 5.5$", fontsize=0.8 * fs, color="tab:green")
 
