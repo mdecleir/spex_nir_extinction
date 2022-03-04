@@ -398,6 +398,7 @@ def table_inv_rv_dep(
 
     # obtain the fitted average extinction in a few photometric bands
     all_waves = np.arange(0.8, 4.05, 0.001)
+
     ave_fit_all = average.model["params"][0] * all_waves ** (
         -average.model["params"][2]
     )
@@ -465,6 +466,49 @@ def table_inv_rv_dep(
             "caption": r"Average diffuse Milky Way extinction curve and parameters of the linear relationship between extinction $A(\lambda)/A(V)$ and $1/R(V)$. \label{tab:RV_dep}",
         },
         fill_values=[("nan", r"\nodata")],
+        overwrite=True,
+    )
+
+
+def table_spline(outpath, waves, slopes, stds, norm):
+    """
+    Create a table with the achor points of the spline interpolation
+
+    Parameters
+    ----------
+    outpath : string
+        Path to save the table
+
+    waves : np.ndarray
+        Numpy array with anchor wavelengths
+
+    slopes : np.ndarray
+        Numpy array with anchor slopes
+
+    stds : np.ndarray
+        Numpy array with anchor standard deviations
+
+    norm : string [default="V"]
+        Band or wavelength for the normalization
+
+    Returns
+    -------
+    Table with the anchor points of the spline interpolation (in ascii format)
+    """
+    # create the table
+    table = Table(
+        [waves, slopes, stds],
+        names=(
+            "wavelength[micron]",
+            "slope",
+            "std",
+        ),
+    )
+
+    # save it in ascii format
+    table.write(
+        outpath + "inv_RV_anchors" + str(norm) + ".txt",
+        format="ascii.commented_header",
         overwrite=True,
     )
 
@@ -550,6 +594,9 @@ def fit_slopes_intercepts(slopes, intercepts, stds, waves, norm):
     table_inv_rv_dep(
         table_path, table_waves, fit_slopes, fit_intercepts, fit_stds, norm
     )
+
+    # create a table with the anchor points of the spline interpolation
+    table_spline(table_path, spline_wave, spline_slope, spline_std, norm)
 
     return spline_wave, spline_slope, spline_std, fit_slopes, fit_intercepts, fit_stds
 
